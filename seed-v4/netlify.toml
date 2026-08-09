@@ -1,0 +1,25 @@
+[build]
+  base    = "seed-v4"
+  command = "npm ci && npm run build"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "24"
+
+# Hashed asset filenames are content-addressed, so they can be cached forever.
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+# The entry document must never be cached, or a deploy ships stale asset refs.
+[[headers]]
+  for = "/index.html"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
+
+# Single page: every path resolves to the world.
+[[redirects]]
+  from   = "/*"
+  to     = "/index.html"
+  status = 200
