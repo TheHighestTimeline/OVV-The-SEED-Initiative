@@ -116,7 +116,15 @@ export function applyWind(material, strength) {
         ${WIND_CHUNK}`)
       .replace('#include <begin_vertex>', `#include <begin_vertex>
         {
-          vec3 wp = ( modelMatrix * instanceMatrix * vec4( 0.0, 0.0, 0.0, 1.0 ) ).xyz;
+          /* instanceMatrix only exists when the draw is instanced. A single
+             non-instanced mesh carrying a foliage material — the merge pass
+             produces one — failed to compile the whole program without this
+             guard, and the tree rendered as a shader error. */
+          #ifdef USE_INSTANCING
+            vec3 wp = ( modelMatrix * instanceMatrix * vec4( 0.0, 0.0, 0.0, 1.0 ) ).xyz;
+          #else
+            vec3 wp = ( modelMatrix * vec4( 0.0, 0.0, 0.0, 1.0 ) ).xyz;
+          #endif
           float hf = clamp( transformed.y, 0.0, 6.0 );
           float s = wsway( wp, hf ) * uWindAmt;
           transformed.x += s;
@@ -139,7 +147,15 @@ export function applyWind(material, strength) {
         ${WIND_CHUNK}`)
       .replace('#include <begin_vertex>', `#include <begin_vertex>
         {
-          vec3 wp = ( modelMatrix * instanceMatrix * vec4( 0.0, 0.0, 0.0, 1.0 ) ).xyz;
+          /* instanceMatrix only exists when the draw is instanced. A single
+             non-instanced mesh carrying a foliage material — the merge pass
+             produces one — failed to compile the whole program without this
+             guard, and the tree rendered as a shader error. */
+          #ifdef USE_INSTANCING
+            vec3 wp = ( modelMatrix * instanceMatrix * vec4( 0.0, 0.0, 0.0, 1.0 ) ).xyz;
+          #else
+            vec3 wp = ( modelMatrix * vec4( 0.0, 0.0, 0.0, 1.0 ) ).xyz;
+          #endif
           float hf = clamp( transformed.y, 0.0, 6.0 );
           float s = wsway( wp, hf ) * uWindAmt;
           transformed.x += s;

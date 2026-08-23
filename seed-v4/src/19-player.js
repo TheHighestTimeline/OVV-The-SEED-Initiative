@@ -63,7 +63,7 @@ export class Player {
       if (this.onLockChange) this.onLockChange(this._locked);
     };
     this._onClick = () => {
-      if (this.enabled && !this._locked) this.dom.requestPointerLock();
+      if (this.enabled && !this._locked) this._lock();
     };
 
     window.addEventListener('keydown', this._onKeyDown);
@@ -71,6 +71,29 @@ export class Player {
     document.addEventListener('mousemove', this._onMove);
     document.addEventListener('pointerlockchange', this._onLockChange);
     this.dom.addEventListener('click', this._onClick);
+  }
+
+  /**
+   * Request pointer lock, tolerating the cases where the browser refuses.
+   *
+   * `requestPointerLock()` returns a promise in current browsers and it
+   * rejects rather than throwing — in a cross-origin frame, without a user
+   * gesture, or while another element holds the lock. Left unhandled that is
+   * an uncaught rejection in the console on every attempt. Walking still
+   * works without the lock; only the mouse-look does, so the failure is
+   * reported to the caller instead of being fatal.
+   */
+  _lock() {
+    let p;
+    try {
+      p = this.dom.requestPointerLock();
+    } catch (e) {
+      if (this.onLockError) this.onLockError(e);
+      return;
+    }
+    if (p && typeof p.catch === 'function') {
+      p.catch((e) => { if (this.onLockError) this.onLockError(e); });
+    }
   }
 
   /* --------------------------------------------------------------- enter */
@@ -88,7 +111,7 @@ export class Player {
     this.onGround = true;
     this.cam.fov = vFovFor(this.dom.clientWidth / this.dom.clientHeight);
     this.cam.updateProjectionMatrix();
-    this.dom.requestPointerLock();
+    this._lock();
   }
 
   exit(restoreFov) {

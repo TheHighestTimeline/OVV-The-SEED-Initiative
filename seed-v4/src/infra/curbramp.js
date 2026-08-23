@@ -116,27 +116,39 @@ export function curbRamp(x, z, heading, opts = {}) {
   ramp.rotation.x = -slopeAngle;
   g.add(ramp);
 
-  /* Flared sides at 10 percent. A flare is not a route and is not counted in
-     the ramp width — it exists so someone walking along the sidewalk across
-     the top of the ramp does not step off an edge. */
+  /* Flared sides. A flare is a triangle in elevation — full height at the top
+     of the ramp, nothing at the curb — so it is built as a wedge, not as
+     another tilted slab. Stacking a second rotation on a slab (as the first
+     version did) produced the fan of overlapping panels at unrelated angles
+     that made the corners read as debris rather than as a ramp. */
+  const flareW = Math.min(geo.flareRun, geo.run);
   for (const s of [-1, 1]) {
-    const fw = geo.flareRun;
-    const fx = midX + Math.cos(heading + Math.PI / 2) * s * (width / 2 + fw / 2);
-    const fz = midZ + Math.sin(heading + Math.PI / 2) * s * (width / 2 + fw / 2);
-    const flare = mesh(box(fw, IN(5), geo.run / Math.cos(slopeAngle)),
-      MAT.concreteWalk, fx, y0 + geo.rise / 2 + ELEV.concreteWalk, fz);
-    flare.rotation.order = 'YXZ';
-    flare.rotation.y = -heading;
-    flare.rotation.x = -slopeAngle;
-    flare.rotation.z = s * Math.atan(CURB_RAMP.flareSlopeMax);
-    g.add(flare);
+    const shape = new THREE.Shape();
+    shape.moveTo(0, 0);
+    shape.lineTo(geo.run, 0);
+    shape.lineTo(geo.run, geo.rise);
+    shape.closePath();
+    const wedge = new THREE.Mesh(
+      new THREE.ExtrudeGeometry(shape, { depth: flareW, bevelEnabled: false }),
+      MAT.concreteWalk);
+    /* lay the wedge along the ramp direction, standing on the ground */
+    wedge.geometry.rotateY(-Math.PI / 2);
+    wedge.position.set(
+      x + bx * 0 + Math.cos(heading + Math.PI / 2) * s * (width / 2),
+      y0 + ELEV.concreteWalk,
+      z + bz * 0 + Math.sin(heading + Math.PI / 2) * s * (width / 2));
+    wedge.rotation.y = -heading + (s < 0 ? Math.PI : 0);
+    wedge.castShadow = true; wedge.receiveShadow = true;
+    g.add(wedge);
   }
 
-  /* The level turning space at the top. 4 x 4 ft at 2 percent maximum. */
-  const lx = x + bx * (geo.run + CURB_RAMP.landingDepth / 2);
-  const lz = z + bz * (geo.run + CURB_RAMP.landingDepth / 2);
-  g.add(mesh(box(CURB_RAMP.landingWidth, IN(5), CURB_RAMP.landingDepth),
-    MAT.concreteWalk, lx, y0 + geo.rise + ELEV.concreteWalk, lz, { rotY: -heading }));
+  /* The level turning space at the top, flush with the top of the ramp so the
+     two read as one surface rather than as a slab hovering behind it. */
+  const lx = x + bx * (geo.run + CURB_RAMP.landingDepth / 2 - IN(2));
+  const lz = z + bz * (geo.run + CURB_RAMP.landingDepth / 2 - IN(2));
+  g.add(mesh(box(width, IN(5), CURB_RAMP.landingDepth + IN(4)),
+    MAT.concreteWalk, lx, y0 + geo.rise + ELEV.concreteWalk - IN(2.5), lz,
+    { rotY: -heading }));
 
   /* Detectable warning at the back of curb, the full width of the ramp. */
   const dwx = x + bx * (DW.depth / 2);

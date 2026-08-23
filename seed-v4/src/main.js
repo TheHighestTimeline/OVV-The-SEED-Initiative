@@ -353,6 +353,15 @@ async function main() {
         : 'click to look around';
     }
   };
+  /* Pointer lock is refused in an embedded frame and without a user gesture.
+     Walking still works; only mouse-look is lost, so say so rather than
+     leaving the user in a mode that appears broken. */
+  player.onLockError = () => {
+    if (walkHud) {
+      walkHud.innerHTML = 'mouse look unavailable here — <b>WASD</b> still ' +
+        'walks, <b>Esc</b> to exit. Open in a browser tab for full control.';
+    }
+  };
 
   window.addEventListener('keydown', (e) => {
     if (e.key === 'Escape' && state.mode === 'walk') state.exitWalk();
