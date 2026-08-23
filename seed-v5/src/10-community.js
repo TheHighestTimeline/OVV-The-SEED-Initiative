@@ -16,6 +16,7 @@ import { groundH } from './01-terrain.js';
 import { MAT } from './03-materials.js';
 import { place } from './02-registry.js';
 import { buildBuilding, entranceAssembly } from './07-buildings.js';
+import { bench, binPair, bikeRackRow } from './infra/index.js';
 import { mesh, box, cyl, decal, instanced, polygonPavingDense } from './geom.js';
 import { PLOTS } from './08-siteplan.js';
 
@@ -315,6 +316,10 @@ export function buildCommunity(world, roads, walks) {
       const canvasDS = MAT.canvas.clone();
       canvasDS.name = 'canvasTensile';
       canvasDS.side = THREE.DoubleSide;
+      /* tensile PTFE fabric, not a light box: the near-white default blew
+         out to a featureless disc in full sun */
+      canvasDS.color.setHex(0xb7b0a0);
+      canvasDS.roughness = 0.96;
       const cm = new THREE.Mesh(cone, canvasDS);
       cm.position.set(pz0.x, py + 11.0, pz0.z + 6);
       grp.add(cm);
@@ -335,16 +340,41 @@ export function buildCommunity(world, roads, walks) {
       for (let i = 0; i < poles.length; i++) {
         const a = poles[i], b = poles[(i + 1) % poles.length];
         const bulbs = [];
+        const wirePts = [];
         const n = 16;
         for (let k = 0; k <= n; k++) {
           const t = k / n;
           const x = lerp(a[0], b[0], t), z = lerp(a[1], b[1], t);
           const sag = Math.sin(t * Math.PI) * 1.35;
-          bulbs.push({ x, y: lerp(a[2], b[2], t) + 6.2 - sag, z, s: 1 });
+          const y = lerp(a[2], b[2], t) + 6.2 - sag;
+          wirePts.push(new THREE.Vector3(x, y, z));
+          if (k > 0 && k < n) bulbs.push({ x, y: y - 0.09, z, s: 1 });
         }
+        /* the WIRE, not just bulbs: bare spheres floating on nothing read
+           as debris from the air */
+        const curve = new THREE.CatmullRomCurve3(wirePts);
+        const wire = new THREE.Mesh(new THREE.TubeGeometry(curve, 20, 0.02, 4), MAT.steelDark);
+        wire.castShadow = false; wire.receiveShadow = false;
+        grp.add(wire);
         grp.add(instanced(new THREE.SphereGeometry(0.075, 6, 5), MAT.emitWarm, bulbs,
           { cast: false, receive: false }));
       }
+      /* plaza furniture: benches facing the centre along the north and east
+         arcs, a bin pair at every entrance gap, bike racks at the north
+         entry — the things that make a public square read as one */
+      const pyF = groundH(pz0.x, pz0.z);
+      for (const aDeg of [38, 66, 94, 122, 210, 238]) {
+        const a = aDeg * DEG;
+        const fx = pz0.x + Math.cos(a) * (pz0.r - 3.2);
+        const fz = pz0.z + Math.sin(a) * (pz0.r - 3.2);
+        grp.add(bench(fx, fz, a + Math.PI));
+      }
+      for (const aDeg of [0, 175, 270]) {
+        const a = aDeg * DEG;
+        grp.add(binPair(pz0.x + Math.cos(a) * (pz0.r - 2.2),
+                        pz0.z + Math.sin(a) * (pz0.r - 2.2), a + Math.PI));
+      }
+      grp.add(bikeRackRow(pz0.x + 6, pz0.z - pz0.r + 4.5, Math.PI / 2, 4));
       return grp;
     },
   });
@@ -418,28 +448,11 @@ export function buildCommunity(world, roads, walks) {
       y0: groundH(y2.x, y2.z) - 0.4, y1: groundH(y2.x, y2.z) + 9,
       parent: g, site: 'training yard',
       build: () => {
+        /* A clean graded practice pad, nothing else (owner direction: the
+           mock bays, scaffold towers and the floating pipe stack read as
+           debris from the air and are gone). */
         const grp = new THREE.Group();
-        const yy = groundH(y2.x, y2.z);
         grp.add(decal(y2.w, y2.d, y2.x, y2.z, MAT.gravel, 'aggregate'));
-        /* mock structures for trades practice */
-        for (let i = 0; i < 4; i++) {
-          const bx = y2.x - 26 + i * 18, bz = y2.z - 12;
-          grp.add(mesh(box(7, 3.2, 5), MAT.brick, bx, yy + 1.6, bz));
-          grp.add(mesh(box(7.4, 0.2, 5.4), MAT.deck, bx, yy + 3.3, bz));
-        }
-        /* scaffold tower, pipe rack, welding bays */
-        for (let i = 0; i < 3; i++) {
-          const sx = y2.x - 20 + i * 20, sz = y2.z + 14;
-          for (const ax of [-1, 1]) for (const az of [-1, 1]) {
-            grp.add(mesh(cyl(0.05, 0.05, 8, 6), MAT.galv, sx + ax * 1.2, yy + 4, sz + az * 1.2));
-          }
-          for (let k = 0; k < 4; k++) {
-            grp.add(mesh(box(2.6, 0.06, 2.6), MAT.deck, sx, yy + 2 + k * 2, sz));
-          }
-        }
-        for (let i = 0; i < 5; i++) {
-          grp.add(mesh(cyl(0.16, 0.16, 12, 10), MAT.steelDark, y2.x + 22, yy + 0.9 + i * 0.4, y2.z, { rotZ: Math.PI / 2 }));
-        }
         return grp;
       },
     });

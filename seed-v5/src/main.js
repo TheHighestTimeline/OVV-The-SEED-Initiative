@@ -461,7 +461,8 @@ async function main() {
       while (o && o !== pipe.scene) { chain.unshift(o.name || o.type); o = o.parent; }
       return { d: +h.distance.toFixed(1), path: chain.join('/'),
                mat: h.object.material && h.object.material.name,
-               y: +h.point.y.toFixed(2) };
+               x: +h.point.x.toFixed(1), y: +h.point.y.toFixed(2),
+               z: +h.point.z.toFixed(1) };
     });
   };
   /* free camera for the verification harness: aim at a world point */

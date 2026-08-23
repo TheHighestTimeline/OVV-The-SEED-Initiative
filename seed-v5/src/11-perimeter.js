@@ -163,54 +163,11 @@ export function buildPerimeter(world, roads, pipeline) {
     splitAtGates(path, 24).forEach((run, ri) =>
       registerRun('bioswale-' + ri, run, 8, -2.2, 0.6, LAYER.UTILITY,
         ['perimeter'], ['perimeter', 'road', 'walk', 'apron'], ['no-geom-audit']));
-    {
-        const grp = new THREE.Group();
-        grp.name = 'bioswale';
-        /* cobble check dams every 30 m */
-        for (let k = 0; k < sm.length; k += 5) {
-          const p = sm[k];
-          if (inGate(p.x, p.z, 20)) continue;
-          const cobbles = [];
-          for (let i = 0; i < 22; i++) {
-            const t = (i / 21 - 0.5) * 6.4;
-            const px = p.x + p.nx * t + (r() - 0.5) * 0.5;
-            const pz = p.z + p.nz * t + (r() - 0.5) * 0.5;
-            cobbles.push({ x: px, y: groundH(px, pz) + 0.16, z: pz,
-                           ry: r() * 6.28, s: 0.5 + r() * 0.45 });
-          }
-          grp.add(instanced(new THREE.DodecahedronGeometry(0.42, 0), MAT.gravel, cobbles,
-            { cast: true, receive: true }));
-        }
-        g.add(grp);
-    }
-    /* the outfall: headwall, level spreader and energy dissipator at the south
-       berm toe, where the swale discharges to the watershed corridor */
-    const ox = 82, oz = SITE.bermToeOut + 4;
-    place({
-      id: 'swale-outfall', layer: LAYER.UTILITY,
-      footprint: { x: ox, z: oz, w: 22, d: 16 },
-      y0: groundH(ox, oz) - 2, y1: groundH(ox, oz) + 3,
-      parent: g, site: 'bioswale outfall headwall',
-      build: () => {
-        const grp = new THREE.Group();
-        const oy = groundH(ox, oz);
-        grp.add(mesh(box(14, 2.4, 1.0), MAT.precast, ox, oy + 0.9, oz - 3));
-        for (const s of [-1, 1]) {
-          grp.add(mesh(box(1.0, 2.2, 7), MAT.precast, ox + s * 6.5, oy + 0.8, oz + 0.6, { rotY: s * 0.28 }));
-        }
-        grp.add(mesh(cyl(1.0, 1.0, 2.4, 16), MAT.precast, ox, oy + 0.7, oz - 3.6, { rotX: Math.PI / 2 }));
-        /* level spreader lip and a riprap apron */
-        grp.add(mesh(box(16, 0.35, 0.6), MAT.precast, ox, oy + 0.18, oz + 3.4));
-        const rip = [];
-        for (let i = 0; i < 90; i++) {
-          const px = ox + (r() - 0.5) * 18, pz = oz + 1 + r() * 11;
-          rip.push({ x: px, y: groundH(px, pz) + 0.2, z: pz, ry: r() * 6.28, s: 0.5 + r() * 0.8 });
-        }
-        grp.add(instanced(new THREE.DodecahedronGeometry(0.55, 0), MAT.gravel, rip));
-        return grp;
-      },
-    });
-    out.anchors.bioswale = [ox, groundH(ox, oz) + 3, oz - 30];
+    /* The valley itself is GONE (owner direction): swaleDepth is 0 in the
+       master plan, so this strip is flat lawn outside the wall. No check
+       dams, no headwall, no rocks in a divot — the stormwater story starts
+       at the watershed corridor south of the site. */
+    out.anchors.bioswale = [82, groundH(82, SITE.bermToeOut + 4) + 3, SITE.bermToeOut - 26];
   }
 
   /* ============================================================== gatehouse

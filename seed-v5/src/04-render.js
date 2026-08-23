@@ -677,17 +677,15 @@ export class RenderPipeline {
   }
 
   render(dt) {
-    /* static-camera accumulation: when the camera is still, TAA keeps stacking
-       jittered samples, which is what makes stills and screen recordings look
-       expensive rather than merely clean */
+    /* NO static-camera accumulation. TAARenderPass's accumulate mode holds a
+       progressively-built buffer; once the sample budget is spent it stops
+       re-rendering, and anything that invalidates the held buffer (a light
+       animating, tab throttling, a target resize) leaves the screen showing
+       stale or cleared data — which is exactly the "walk away and it goes
+       black" report. Per-frame jitter without accumulation is stable. */
     if (this.taa) {
-      const moved = this._lastCamPos.distanceToSquared(this.camera.position) > 1e-6;
-      if (moved) { this._staticFrames = 0; this.taa.sampleLevel = 0; this.taa.accumulate = false; }
-      else {
-        this._staticFrames++;
-        if (this._staticFrames > 30) { this.taa.accumulate = true; this.taa.sampleLevel = 3; }
-      }
-      this._lastCamPos.copy(this.camera.position);
+      this.taa.accumulate = false;
+      this.taa.sampleLevel = 0;
     }
     this.csm.update();
     this.updateLamps();

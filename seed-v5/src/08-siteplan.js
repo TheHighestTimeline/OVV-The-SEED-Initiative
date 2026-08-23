@@ -367,10 +367,16 @@ export function buildWalkNetwork(roads) {
   N('p-pondS', 292, -72, 'walk');
   w.edge('pond-1', 'p-ghW', 'p-pondW', 'parkPath', [[168, -348]]);
   w.edge('pond-2', 'p-pondW', 'p-pondN', 'parkPath', [[306, -348]]);
-  w.edge('pond-bw', 'p-pondW', 'p-bwA', 'boardwalk', [[294, -300]], { allow: ['water'] });
-  w.edge('pond-bw2', 'p-bwA', 'p-bwB', 'boardwalk', [[330, -240]], { allow: ['water'] });
-  w.edge('pond-3', 'p-bwB', 'p-pondC', 'parkPath', [[362, -170]]);
-  w.edge('pond-4', 'p-pondC', 'p-pondS', 'parkPath');
+  /* On the banks, not over the water: the pond loop stays a park path that
+     rounds each basin and threads the gap between them (owner direction —
+     nothing built across open water). */
+  w.edge('pond-bw', 'p-pondW', 'p-bwA', 'parkPath', [[284, -300]], { allow: ['water'] });
+  w.edge('pond-bw2', 'p-bwA', 'p-bwB', 'parkPath', [[330, -240]], { allow: ['water'] });
+  /* routed on the UPPER banks: the old waypoints clipped inside the pond
+     radii, and because paths conform to the ground they dived into the
+     excavated bowls — a sidewalk running through open water */
+  w.edge('pond-3', 'p-bwB', 'p-pondC', 'parkPath', [[368, -168], [344, -138]]);
+  w.edge('pond-4', 'p-pondC', 'p-pondS', 'parkPath', [[284, -100]]);
   w.edge('pond-5', 'p-pondS', 'p-food', 'parkPath', [[272, -68], [190, -66]]);
 
   /* ---- academy and training yard */

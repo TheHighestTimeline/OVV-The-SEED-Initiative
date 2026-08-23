@@ -433,21 +433,24 @@ export function entranceAssembly(x, z, ang, nrm, base, wallBase, primary) {
   /* vestibule box projecting from the wall */
   const [vx, vz] = P(1.5, 0);
   g.add(mesh(box(5.2, 3.6, 3.0), MAT.precast, vx, base + 1.8, vz, { rotY: ang }));
-  /* doors: two leaves with a transom, genuinely glazed */
+  /* The doorway, ON the vestibule's outer face where a person sees it.
+     The old panes sat at the box's mid-plane — inside solid concrete — and
+     were one-sided, so every entrance read as a blank bunker with no way
+     in. A dark recessed surround, two glazed leaves proud of the face, a
+     push bar line, and a transom over the top. */
+  const face = 3.02;                      /* just proud of the box front */
+  const [ox, oz] = P(face - 0.10, 0);
+  g.add(mesh(box(2.9, 2.75, 0.18), MAT.steelDark, ox, base + 1.38, oz, { rotY: ang }));
   for (const s of [-1, 1]) {
-    const [dx, dz] = P(-0.05, s * 0.58);
-    const pane = new THREE.Mesh(new THREE.PlaneGeometry(1.05, 2.35), MAT.glass);
-    pane.position.set(dx + nrm[0] * 1.55, base + 1.24, dz + nrm[1] * 1.55);
-    pane.rotation.y = ang + Math.PI / 2;
-    g.add(pane);
-    const [fx, fz] = P(1.5, s * 1.16);
-    g.add(mesh(box(0.10, 2.45, 0.14), MAT.alu, fx, base + 1.26, fz, { rotY: ang }));
+    const [dx2, dz2] = P(face, s * 0.62);
+    g.add(mesh(box(1.10, 2.40, 0.06), MAT.glassSimple, dx2, base + 1.22, dz2, { rotY: ang }));
+    g.add(mesh(box(0.07, 2.40, 0.09), MAT.alu, dx2 + tan[0] * s * 0.60,
+      base + 1.22, dz2 + tan[1] * s * 0.60, { rotY: ang }));
+    /* push bar */
+    g.add(mesh(box(0.85, 0.05, 0.05), MAT.alu, dx2, base + 1.05, dz2, { rotY: ang }));
   }
-  const [tx, tz] = P(1.52, 0);
-  const transom = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 0.85), MAT.glass);
-  transom.position.set(tx, base + 2.9, tz);
-  transom.rotation.y = ang + Math.PI / 2;
-  g.add(transom);
+  const [tx, tz] = P(face, 0);
+  g.add(mesh(box(2.55, 0.70, 0.05), MAT.glassSimple, tx, base + 2.85, tz, { rotY: ang }));
 
   /* entry canopy on slender columns, stopping at the beam */
   const [cx, cz] = P(3.6, 0);

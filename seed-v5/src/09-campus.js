@@ -165,17 +165,31 @@ export function buildCampus(world, roads, walks) {
           for (let k = 0; k < 5; k++) {
             grp.add(mesh(box(p.w, 0.05, 0.05), MAT.galv, p.x, by + 1.2 + k * 2.8, zz));
           }
-          /* instanced vine clusters on the trellis */
+          /* Vine mats LYING ON the trellis plane. The old fully-random yaw
+             left half the foliage cards perpendicular to the wall, sticking
+             out like fins — which is why the green wall read as fake. Cards
+             now face outward with only a small jitter, run denser low on
+             the wall (vines climb from the ground), and cascade slightly
+             where they hang over a rail. */
+          const faceRy = side > 0 ? 0 : Math.PI;
           const tr = [];
-          for (let i = 0; i < 130; i++) {
+          for (let i = 0; i < 240; i++) {
+            const hBias = Math.pow(r(), 1.6);          /* denser low */
             tr.push({
-              x: p.x - p.w / 2 + r() * p.w, y: by + 0.6 + r() * 11.6,
-              z: zz + side * 0.14, ry: r() * 6.28, rz: (r() - 0.5) * 0.6,
-              s: 0.5 + r() * 0.9,
+              x: p.x - p.w / 2 + r() * p.w, y: by + 0.5 + hBias * 11.4,
+              z: zz + side * 0.10,
+              ry: faceRy + (r() - 0.5) * 0.5,
+              rz: (r() - 0.5) * 0.35, rx: (r() - 0.5) * 0.2,
+              s: 0.55 + r() * 0.75,
             });
           }
-          grp.add(instanced(new THREE.PlaneGeometry(1.5, 1.5), MAT.folPoplar, tr,
+          grp.add(instanced(new THREE.PlaneGeometry(1.6, 1.3), MAT.folPoplar, tr,
             { cast: false, receive: true }));
+          /* the planter bed the vines rise from */
+          grp.add(mesh(box(p.w + 0.8, 0.55, 1.1), MAT.precast,
+            p.x, by + 0.27, zz + side * 0.15));
+          grp.add(mesh(box(p.w + 0.6, 0.12, 0.9), MAT.mulch,
+            p.x, by + 0.56, zz + side * 0.15, { cast: false }));
         }
         /* the turbine hall's exhaust and intake stacks */
         for (let i = 0; i < 2; i++) {

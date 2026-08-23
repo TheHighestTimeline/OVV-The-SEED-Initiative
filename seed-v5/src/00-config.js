@@ -174,7 +174,7 @@ export const SITE = {
   setback:       10.5,       /* fence -> bioswale outer shoulder (spec min 9.1) */
   swaleOffset:   415,        /* bioswale valley centreline */
   swaleWidth:    5,
-  swaleDepth:    1.2,
+  swaleDepth:    0,          /* flat — no valley (owner direction) */
   swaleRun:      6.0,        /* batter run; 1.2 rise over 4.8 straight = 4:1 */
   swaleFillet:   1.2,
   bermToeIn:     424,

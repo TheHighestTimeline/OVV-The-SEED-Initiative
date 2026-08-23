@@ -343,19 +343,19 @@ export function buildVegetation(world) {
     return y > -0.15 && y < 0.95 && z > SITE.estuaryStartZ - 40 && z < SITE.duneStartZ;
   }, [-520, 560, SITE.estuaryStartZ - 40, SITE.duneStartZ], 0.95, 0.5));
 
-  g.add(groundCover('swale-grass', 4200, MAT.folPalmetto, (x, z) => {
-    const u = perimU(x, z);
-    return u > SITE.swaleOffset - 9 && u < SITE.swaleOffset + 9;
-  }, [-460, 460, -460, 460], 0.85, 0.45));
+  /* (the swale-grass band is gone with the swale — flat lawn now)
 
-  g.add(groundCover('agri-understory', 3600, MAT.crop, (x, z) => (
-    x > 292 && x < 368 && z > 40 && z < 340
-  ), [292, 368, 40, 340], 0.6, 0.5));
+     The pollinator understory stays INSIDE the tracker rows. The old
+     scatter box was 300 m long and covered the training yard, the academy
+     frontage and half the south lawn with bright green confetti. */
+  g.add(groundCover('agri-understory', 1400, MAT.crop, (x, z) => (
+    x > 290 && x < 354 && z > 308 && z < 352
+  ), [290, 354, 308, 352], 0.6, 0.5));
 
   /* grazing sheep under the agrivoltaic array (stated feature e2) */
   const sheep = [];
-  for (let i = 0; i < 34; i++) {
-    const x = 296 + r() * 68, z = 46 + r() * 288;
+  for (let i = 0; i < 16; i++) {
+    const x = 294 + r() * 56, z = 310 + r() * 40;
     sheep.push({ x, y: groundH(x, z) + 0.42, z, ry: r() * 6.28, s: 0.85 + r() * 0.3 });
   }
   const sg = new THREE.SphereGeometry(0.42, 8, 6);

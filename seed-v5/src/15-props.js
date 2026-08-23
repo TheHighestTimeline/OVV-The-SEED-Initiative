@@ -93,8 +93,12 @@ export function buildProps(world, roads, walks, pipeline) {
       const p = sm[Math.round((i * cfg.spacing / sm.total) * (sm.length - 1))];
       if (!p) continue;
       const off = e.spec.width / 2 + POLE.setbackFromCurb;
-      addPlacement('pathway', p.x + p.nx * off, p.z + p.nz * off,
-        Math.atan2(-p.nz, -p.nx));
+      const lx = p.x + p.nx * off, lz = p.z + p.nz * off;
+      /* not inside the event plaza: the spine walks cross the paved circle
+         and the offset lamps landed as random poles mid-square */
+      const plz = PLOTS.plaza;
+      if (Math.hypot(lx - plz.x, lz - plz.z) < plz.r - 1) continue;
+      addPlacement('pathway', lx, lz, Math.atan2(-p.nz, -p.nx));
     }
   }
 

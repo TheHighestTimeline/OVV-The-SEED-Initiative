@@ -20,6 +20,10 @@ const AREAS = {
   plaza:        { x: 0, z: 276, dist: 150, theta: -2.35, phi: 1.0 },
   hallRoof:     { x: -230, z: -180, dist: 150, theta: -0.95, phi: 0.7 },
   pondBw:       { x: 320, z: -250, dist: 90, theta: -0.8, phi: 1.05 },
+  yard:         { x: 300, z: 260, dist: 150, theta: -2.2, phi: 0.95 },
+  hut:          { x: -34, z: 196, dist: 60, theta: 1.8, phi: 0.95 },
+  living:       { x: -240, z: 118, dist: 90, theta: -0.5, phi: 1.1 },
+  pondPath:     { x: 320, z: -120, dist: 130, theta: -0.9, phi: 0.9 },
   dune:         { x: 60, z: 1265, dist: 220, theta: -1.6, phi: 0.9 },
 };
 

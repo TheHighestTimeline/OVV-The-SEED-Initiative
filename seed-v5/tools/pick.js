@@ -16,10 +16,12 @@ await page.goto(pathToFileURL(file).href + '?tier=balanced&debug=1', { waitUntil
 await page.waitForFunction(() => window.__seedReady === true || window.__seedError, { timeout: 240000 });
 /* gatehouse view; pick the centre of the white band and a few nearby points */
 const out = await page.evaluate(() => {
-  window.__seedGoto(0, -560, 130, -1.5, 1.0);
+  window.__seedGoto(325, 250, 80, -Math.PI/2, 0.1);
   const picks = {};
-  for (let i = -5; i <= 5; i++) { const label = "x" + i, nx = i * 0.1, ny = 0;
-    picks[label] = window.__seedPick(nx, ny);
+  for (let i = 0; i < 121; i++) {
+    const nx = ((i % 11) - 5) * 0.1, ny = (Math.floor(i / 11) - 5) * 0.1;
+    const h = window.__seedPick(nx, ny)[0];
+    if (h && h.mat === 'precast') picks['p' + i] = h;
   }
   return picks;
 });

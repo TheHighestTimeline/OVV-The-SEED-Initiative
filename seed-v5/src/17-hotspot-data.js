@@ -34,10 +34,10 @@ const SPOTS_ALL = [
  ['Treatment','Multi stage filtration and UV before any reuse that touches food production.']],
  tags:['rainwater','reuse','resilience']},
 
-{id:'w3',cat:'water',t:'Bioswale belt',k:'The stormwater system rings the campus: a planted valley outside the perimeter wall.',
+{id:'w3',cat:'water',t:'Stormwater corridor',k:'Campus stormwater routes underground to the watershed corridor south of the wall.',
  p:[-296,10,150],stem:10,
- stats:[['0','net runoff increase'],['5 ac','bioswale belt'],['30 ft','wall setback'],['100%','light rain infiltrated']],
- rows:[['The move','The bioswale valley runs 30 feet outside the perimeter wall the whole way round. It channels stormwater to the outfall and fills as a linear detention pond during a storm.'],
+ stats:[['0','net runoff increase'],['1.4 km','open corridor'],['30 ft','wall setback'],['100%','light rain infiltrated']],
+ rows:[['The move','Campus runoff is collected in the street drainage and routed to the watershed corridor south of the site, where the creek, the riparian bands and the estuary do the treatment work in the open.'],
  ['Bioswales','Five acres of native grasses, wildflowers and river cobble check dams along the road frontage. Light rain events infiltrate completely.'],
  ['Paving','Parking, walkways and the event plaza are permeable interlocking concrete pavers. Infiltration runs 100 to 600 inches per hour and recharges the local aquifer.'],
  ['Target','Zero net increase in runoff compared to the pre development condition. All rainfall is managed on site.']],
