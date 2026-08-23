@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>SEED Initiative — Living Campus | OneVibeMediaGroup</title>
+<meta name="description" content="A real-time 3D model of the SEED Initiative Living Campus: closed-loop water, on-site generation, carbon capture, community programs, and the watershed corridor that runs from the campus to the Atlantic.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#070a0d; --ink:#eef2f6; --dim:#9aa6b2; --dimmer:#6d7986;
+  --line:rgba(255,255,255,.10); --line2:rgba(255,255,255,.18);
+  --panel:rgba(12,16,21,.86); --panel2:rgba(18,23,30,.94);
+  --accent:#5FD39B; --sans:'Inter',system-ui,-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+  --mono:'JetBrains Mono',ui-monospace,'SF Mono',Menlo,Consolas,monospace;
+  --r:12px;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0;height:100%;overflow:hidden;background:var(--bg);color:var(--ink);font-family:var(--sans)}
+canvas{display:block;position:fixed;inset:0;width:100%;height:100%}
+button{font-family:inherit;color:inherit;cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:6px}
+
+/* ---------- loading ---------- */
+#boot{position:fixed;inset:0;z-index:200;background:radial-gradient(120% 90% at 50% 40%,#101821 0%,#05080b 70%);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:22px;transition:opacity .7s ease}
+#boot.gone{opacity:0;pointer-events:none}
+#boot h1{margin:0;font-size:clamp(20px,3.4vw,34px);font-weight:600;letter-spacing:-.02em}
+#boot .sub{color:var(--dim);font-size:13px;letter-spacing:.16em;text-transform:uppercase}
+#bar{width:min(360px,72vw);height:2px;background:rgba(255,255,255,.12);border-radius:2px;overflow:hidden}
+#bar i{display:block;height:100%;width:0;background:var(--accent);transition:width .3s ease}
+#bootmsg{color:var(--dimmer);font-size:12px;font-family:var(--mono);height:16px}
+
+/* ---------- chrome ---------- */
+#top{position:fixed;top:0;left:0;right:0;z-index:40;display:flex;align-items:flex-start;
+  justify-content:space-between;gap:12px;padding:14px 16px;pointer-events:none}
+#brand{pointer-events:auto;background:var(--panel);backdrop-filter:blur(14px);border:1px solid var(--line);
+  border-radius:var(--r);padding:10px 14px}
+#brand .t{font-size:14px;font-weight:600;letter-spacing:-.01em}
+#brand .s{font-size:11px;color:var(--dim);margin-top:2px;letter-spacing:.05em}
+#hud{pointer-events:auto;display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;max-width:60vw}
+.chip{background:var(--panel);backdrop-filter:blur(14px);border:1px solid var(--line);border-radius:999px;
+  padding:7px 13px;font-size:11.5px;color:var(--dim);letter-spacing:.03em;white-space:nowrap;
+  transition:background .18s,color .18s,border-color .18s}
+.chip:hover{color:var(--ink);border-color:var(--line2)}
+.chip.on{background:rgba(95,211,155,.16);border-color:rgba(95,211,155,.45);color:#dff7ea}
+
+/* ---------- left rail: categories ---------- */
+#rail{position:fixed;left:16px;top:50%;transform:translateY(-50%);z-index:40;display:flex;flex-direction:column;gap:6px;
+  background:var(--panel);backdrop-filter:blur(14px);border:1px solid var(--line);border-radius:var(--r);padding:10px}
+#rail .h{font-size:9.5px;letter-spacing:.18em;color:var(--dimmer);text-transform:uppercase;padding:2px 6px 6px}
+.cat{display:flex;align-items:center;gap:9px;background:none;border:0;padding:6px 8px;border-radius:8px;
+  font-size:12px;color:var(--dim);text-align:left;width:100%;transition:background .16s,color .16s}
+.cat:hover{background:rgba(255,255,255,.06);color:var(--ink)}
+.cat .dot{width:8px;height:8px;border-radius:50%;flex:0 0 8px;box-shadow:0 0 0 2px rgba(0,0,0,.35)}
+.cat.off{opacity:.34}
+.cat.off .dot{background:transparent!important;box-shadow:inset 0 0 0 1.5px currentColor}
+
+/* ---------- bottom bar: views + time ---------- */
+#bottom{position:fixed;left:50%;bottom:16px;transform:translateX(-50%);z-index:40;display:flex;flex-direction:column;
+  align-items:center;gap:9px;pointer-events:none;width:min(940px,94vw)}
+#views{pointer-events:auto;display:flex;gap:6px;flex-wrap:wrap;justify-content:center;
+  background:var(--panel);backdrop-filter:blur(14px);border:1px solid var(--line);border-radius:999px;padding:6px}
+.view{background:none;border:0;border-radius:999px;padding:7px 14px;font-size:11.5px;color:var(--dim);transition:.16s}
+.view:hover{background:rgba(255,255,255,.07);color:var(--ink)}
+.view.on{background:rgba(255,255,255,.13);color:var(--ink)}
+#timebar{pointer-events:auto;display:flex;align-items:center;gap:12px;background:var(--panel);backdrop-filter:blur(14px);
+  border:1px solid var(--line);border-radius:999px;padding:6px 10px 6px 16px}
+#timebar label{font-size:10px;letter-spacing:.14em;color:var(--dimmer);text-transform:uppercase}
+#timestates{display:flex;gap:4px}
+.tstate{background:none;border:0;border-radius:999px;padding:7px 14px;font-size:11.5px;color:var(--dim);transition:.16s;cursor:pointer}
+.tstate:hover{background:rgba(255,255,255,.07);color:var(--ink)}
+.tstate.on{background:rgba(255,255,255,.13);color:var(--ink)}
+
+/* ---------- markers ---------- */
+#pins{position:fixed;inset:0;z-index:30;pointer-events:none;overflow:hidden}
+.pin{position:absolute;transform:translate(-50%,-50%);pointer-events:auto;background:none;border:0;padding:0;
+  will-change:transform,opacity}
+.pin .ring{width:19px;height:19px;border-radius:50%;border:1.5px solid currentColor;display:grid;place-items:center;
+  background:rgba(6,9,12,.62);backdrop-filter:blur(3px);transition:transform .18s,box-shadow .18s}
+.pin .ring i{width:6px;height:6px;border-radius:50%;background:currentColor;display:block}
+.pin:hover .ring,.pin.sel .ring{transform:scale(1.32);box-shadow:0 0 0 5px rgba(255,255,255,.09)}
+.pin .lbl{position:absolute;left:26px;top:50%;transform:translateY(-50%);white-space:nowrap;font-size:11px;
+  color:#e8eef4;background:rgba(6,9,12,.74);border:1px solid var(--line);border-radius:7px;padding:3px 8px;
+  opacity:0;transition:opacity .18s;pointer-events:none}
+.pin:hover .lbl,.pin.sel .lbl{opacity:1}
+.pin.clustered .lbl{display:none}
+.cluster{position:absolute;transform:translate(-50%,-50%);pointer-events:auto;background:rgba(6,9,12,.78);
+  border:1px solid var(--line2);border-radius:999px;padding:5px 11px;font-size:11px;color:var(--ink);
+  backdrop-filter:blur(4px)}
+
+/* ---------- detail card ---------- */
+#card{position:fixed;right:16px;top:50%;transform:translate(120%,-50%);width:min(420px,calc(100vw - 32px));
+  max-height:min(78vh,760px);z-index:60;background:var(--panel2);backdrop-filter:blur(18px);
+  border:1px solid var(--line);border-radius:16px;display:flex;flex-direction:column;overflow:hidden;
+  transition:transform .42s cubic-bezier(.22,1,.36,1),opacity .3s;opacity:0}
+#card.open{transform:translate(0,-50%);opacity:1}
+#card header{padding:18px 18px 14px;border-bottom:1px solid var(--line);flex:0 0 auto}
+#card .cat{display:inline-flex;align-items:center;gap:7px;font-size:10px;letter-spacing:.16em;text-transform:uppercase;
+  color:var(--dim);padding:0;background:none;width:auto;margin-bottom:8px}
+#card h2{margin:0 0 8px;font-size:19px;line-height:1.25;letter-spacing:-.015em;font-weight:600}
+#card .kick{margin:0;font-size:13px;line-height:1.55;color:var(--dim)}
+#close{position:absolute;right:12px;top:12px;width:28px;height:28px;border-radius:8px;border:1px solid var(--line);
+  background:rgba(255,255,255,.05);color:var(--dim);font-size:15px;line-height:1;display:grid;place-items:center}
+#close:hover{color:var(--ink);background:rgba(255,255,255,.11)}
+#stats{display:grid;grid-template-columns:repeat(2,1fr);gap:1px;background:var(--line);flex:0 0 auto}
+#stats div{background:var(--panel2);padding:12px 14px}
+#stats b{display:block;font-family:var(--mono);font-size:16px;font-weight:500;letter-spacing:-.02em}
+#stats span{display:block;font-size:10.5px;color:var(--dimmer);margin-top:3px;letter-spacing:.04em}
+#body{overflow-y:auto;padding:6px 18px 18px;flex:1 1 auto;scrollbar-width:thin}
+#body h3{margin:16px 0 5px;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);font-weight:600}
+#body p{margin:0;font-size:13px;line-height:1.62;color:#c9d3dc}
+#note{margin-top:16px;padding:12px 13px;border-left:2px solid var(--accent);background:rgba(95,211,155,.07);
+  border-radius:0 8px 8px 0;font-size:12.5px;line-height:1.55;color:#cfe6da}
+#tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:14px}
+#tags span{font-size:10.5px;color:var(--dim);border:1px solid var(--line);border-radius:999px;padding:3px 9px}
+.todofact{display:inline-block;font-family:var(--mono);font-size:11px;color:#ffb020;border:1px dashed rgba(255,176,32,.55);
+  border-radius:6px;padding:2px 7px;margin:2px 0}
+
+/* ---------- misc ---------- */
+#hint{position:fixed;left:50%;bottom:112px;transform:translateX(-50%);z-index:35;font-size:11px;color:var(--dimmer);
+  background:rgba(6,9,12,.6);border:1px solid var(--line);border-radius:999px;padding:5px 13px;
+  transition:opacity .5s;pointer-events:none}
+#hint.gone{opacity:0}
+
+/* ---------- walking mode ----------
+   The orbit chrome is about looking at the campus from outside it. On foot
+   it is in the way, so it stands down and only the crosshair and the
+   walking readout remain. */
+body.walking #rail,body.walking #bottom,body.walking #pins,body.walking #card{
+  opacity:0;pointer-events:none;transition:opacity .3s}
+body.walking #crosshair{opacity:.5}
+body.walking #walkhud{opacity:1}
+#crosshair{position:fixed;left:50%;top:50%;width:14px;height:14px;margin:-7px 0 0 -7px;z-index:36;
+  opacity:0;transition:opacity .3s;pointer-events:none}
+#crosshair:before,#crosshair:after{content:'';position:absolute;background:#fff;
+  box-shadow:0 0 2px rgba(0,0,0,.9)}
+#crosshair:before{left:6px;top:0;width:2px;height:14px}
+#crosshair:after{top:6px;left:0;height:2px;width:14px}
+#walkhud{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);z-index:37;opacity:0;
+  transition:opacity .3s;pointer-events:none;font-family:var(--mono);font-size:11px;color:var(--dim);
+  background:rgba(6,9,12,.72);border:1px solid var(--line);border-radius:999px;padding:6px 14px;
+  white-space:nowrap}
+#walkhud b{color:var(--ink);font-weight:500}
+#dbg{position:fixed;left:16px;top:16px;z-index:70;font-family:var(--mono);font-size:11px;line-height:1.55;
+  background:rgba(4,6,9,.9);border:1px solid var(--line);border-radius:10px;padding:11px 13px;color:#a8ffcf;
+  white-space:pre;display:none;max-height:80vh;overflow:auto}
+#dbg.on{display:block}
+#a11y{position:fixed;inset:0;z-index:150;background:#070a0d;overflow-y:auto;padding:40px 24px;display:none}
+#a11y.on{display:block}
+#a11y .wrap{max-width:760px;margin:0 auto}
+#a11y h1{font-size:24px;margin:0 0 6px}
+#a11y h2{font-size:16px;margin:32px 0 4px;color:var(--accent)}
+#a11y h3{font-size:13px;margin:18px 0 2px}
+#a11y p{font-size:13.5px;line-height:1.65;color:#c2ccd6;margin:6px 0}
+#a11y .st{font-family:var(--mono);font-size:12px;color:var(--dim)}
+@media (max-width:820px){
+  #rail{left:8px;padding:7px;gap:3px}
+  .cat{font-size:11px;padding:5px 6px}
+  .cat span.nm{display:none}
+  #card{right:8px;left:8px;width:auto;bottom:96px;top:auto;transform:translateY(120%);max-height:58vh}
+  #card.open{transform:translateY(0)}
+  #brand .s{display:none}
+}
+@media (prefers-reduced-motion:reduce){
+  *{animation-duration:.001ms!important;transition-duration:.06s!important}
+}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+
+<div id="boot" role="status" aria-live="polite">
+  <div class="sub">OneVibeMediaGroup</div>
+  <h1>SEED Initiative — Living Campus</h1>
+  <div id="bar"><i></i></div>
+  <div id="bootmsg">starting</div>
+</div>
+
+<div id="top">
+  <div id="brand">
+    <div class="t">SEED Initiative — Living Campus</div>
+    <div class="s">Bennettsville, South Carolina · v5</div>
+  </div>
+  <div id="hud">
+    <button class="chip" id="walkBtn" title="Walk the campus at eye height (F)">Walk</button>
+    <button class="chip" id="qBtn" title="Rendering quality">Quality: —</button>
+    <button class="chip" id="tourBtn" title="Cinematic tour of all zones">▶ Tour</button>
+    <button class="chip" id="labelBtn" title="Show or hide marker labels">Labels</button>
+    <button class="chip" id="textBtn" title="Text-only version of every system">Text view</button>
+  </div>
+</div>
+
+<nav id="rail" aria-label="System categories"><div class="h">Systems</div></nav>
+
+<div id="bottom">
+  <div id="timebar">
+    <label>Time</label>
+    <div id="timestates" role="radiogroup" aria-label="Time of day">
+      <button class="tstate on" data-state="afternoon" role="radio" aria-checked="true">Afternoon</button>
+      <button class="tstate" data-state="night" role="radio" aria-checked="false">Night</button>
+    </div>
+  </div>
+  <div id="views" role="tablist" aria-label="Camera views"></div>
+</div>
+
+<div id="pins" aria-hidden="true"></div>
+<div id="crosshair" aria-hidden="true"></div>
+<div id="walkhud" role="status" aria-live="off"></div>
+<div id="hint">Drag to orbit · scroll to zoom · click a marker · press F to walk</div>
+
+<aside id="card" role="dialog" aria-modal="false" aria-labelledby="cardTitle" tabindex="-1">
+  <button id="close" aria-label="Close">✕</button>
+  <header>
+    <div class="cat" id="cardCat"></div>
+    <h2 id="cardTitle"></h2>
+    <p class="kick" id="cardKick"></p>
+  </header>
+  <div id="stats"></div>
+  <div id="body">
+    <div id="rows"></div>
+    <div id="note"></div>
+    <div id="tags"></div>
+  </div>
+</aside>
+
+<pre id="dbg"></pre>
+<div id="a11y"><div class="wrap"></div></div>
+
+<script type="module" src="/src/main.js"></script>
+</body>
+</html>
