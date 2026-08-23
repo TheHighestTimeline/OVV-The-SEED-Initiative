@@ -231,6 +231,9 @@ async function main() {
   await progress('setting traffic control');
   state.zones.intersections = buildIntersections(world, roads, pipe);
 
+  /* every luminaire is registered by now — bake the night light pools */
+  pipe.buildLampPools(groundH);
+
   await progress('optimising');
   /* CSM has to patch every material that receives cascaded shadows */
   for (const m of materialList()) pipe.setupMaterial(m);

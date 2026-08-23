@@ -277,6 +277,92 @@ export class RenderPipeline {
 
   registerLuminaire(rec) { this.luminaires.push(rec); }
 
+  /**
+   * Light-pool decals for every luminaire beyond the real spot-light pool.
+   *
+   * Only the nearest `lightCull` lamps get a real SpotLight; before this,
+   * every street beyond them went black at night — the single biggest
+   * cohesion failure of the night state. Each lamp gets a small disc of
+   * warm additive glow CONFORMED to the ground (each vertex sampled from
+   * the height field, not a flat quad — v3's flat quads washed across
+   * curbs and water). All pools merge into one mesh: one draw call for
+   * ~800 lamps, visibility and opacity driven by the night factor.
+   *
+   * Called from main once every luminaire is registered; groundHeight is
+   * passed in rather than imported to keep the render layer free of
+   * terrain dependencies.
+   */
+  buildLampPools(groundHeight) {
+    if (!this.luminaires.length || this.lampPoolMesh) return;
+    const SEG = 12;
+    const verts = [], cols = [], uvs = [], idx = [];
+    const c = new THREE.Color();
+    let base = 0;
+    for (const rec of this.luminaires) {
+      /* the pool sits under the head, pulled toward the aim point */
+      const cx = rec.pos.x * 0.35 + rec.aim.x * 0.65;
+      const cz = rec.pos.z * 0.35 + rec.aim.z * 0.65;
+      const r = Math.min(13, Math.max(7, (rec.range || 40) * 0.24));
+      c.setHex(rec.colour || 0xffcf9a);
+      const cy = groundHeight(cx, cz) + 0.22;   /* above the whole pavement stack (paver 0.174) */
+      verts.push(cx, cy, cz); cols.push(c.r, c.g, c.b); uvs.push(0.5, 0.5);
+      for (let i = 0; i < SEG; i++) {
+        const a = (i / SEG) * Math.PI * 2;
+        const x = cx + Math.cos(a) * r, z = cz + Math.sin(a) * r;
+        verts.push(x, groundHeight(x, z) + 0.22, z);
+        cols.push(c.r, c.g, c.b);
+        uvs.push(0.5 + Math.cos(a) * 0.5, 0.5 + Math.sin(a) * 0.5);
+      }
+      /* wound to face +y: in the xz ground plane a fan that is CCW in (x,z)
+         reads as CW from above, so the naive order faced the discs DOWNWARD
+         and front-face culling removed every pool — the same inverted-winding
+         class of bug v4 shipped in its road ribbons */
+      for (let i = 0; i < SEG; i++) {
+        idx.push(base, base + 1 + ((i + 1) % SEG), base + 1 + i);
+      }
+      base += SEG + 1;
+    }
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(verts, 3));
+    g.setAttribute('color', new THREE.Float32BufferAttribute(cols, 3));
+    g.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+    g.setIndex(idx);
+    g.computeBoundingSphere();
+
+    /* radial falloff texture, generated once */
+    const size = 64;
+    const cv = document.createElement('canvas');
+    cv.width = cv.height = size;
+    const ctx = cv.getContext('2d');
+    const grad = ctx.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
+    grad.addColorStop(0, 'rgba(255,255,255,0.85)');
+    grad.addColorStop(0.45, 'rgba(255,255,255,0.30)');
+    grad.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, size, size);
+    const tex = new THREE.CanvasTexture(cv);
+    tex.colorSpace = THREE.NoColorSpace;
+
+    const mat = new THREE.MeshBasicMaterial({
+      map: tex, vertexColors: true, transparent: true, opacity: 0,
+      blending: THREE.AdditiveBlending, depthWrite: false,
+      polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4,
+    });
+    /* skip the tone map and push into HDR so the night bloom picks the pools
+       up: from the air a lit street must read as a chain of light the way it
+       does from a plane window, not as a 25%-grey smudge AgX crushes away. */
+    mat.toneMapped = false;
+    mat.color.setScalar(1.9);
+    const mesh = new THREE.Mesh(g, mat);
+    mesh.name = 'lamp-pools';
+    mesh.renderOrder = 40;
+    mesh.visible = false;
+    mesh.castShadow = false; mesh.receiveShadow = false;
+    mesh.userData.noMerge = true;
+    this.lampPoolMesh = mesh;
+    this.scene.add(mesh);
+  }
+
   /* ------------------------------------------------------------- post stack */
   _buildComposer() {
     const w = window.innerWidth, h = window.innerHeight;
@@ -527,6 +613,10 @@ export class RenderPipeline {
   }
 
   _updateEmissives(night) {
+    if (this.lampPoolMesh) {
+      this.lampPoolMesh.visible = night > 0.12;
+      this.lampPoolMesh.material.opacity = 0.85 * clamp(night, 0, 1);
+    }
     if (!this.emissiveGroups) return;
     for (const grp of this.emissiveGroups) {
       const on = night > grp.threshold;

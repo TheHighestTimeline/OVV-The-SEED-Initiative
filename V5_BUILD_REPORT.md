@@ -75,6 +75,23 @@ map **and** fog probe (a GPU read-back) are baked on first visit and cached,
 so the toggle is a texture swap. The cinematic tour runs the campus and town
 in the afternoon and hard-switches to night at the coast, per spec.
 
+### Light pools: night streets now read from the air
+
+The spec's fallback for lamps beyond the real spot-light pool ("baked
+emissive plus a projected ground decal") had never been implemented — beyond
+the nearest 24 lamps, every street went black at night. v5 gives each of the
+850 luminaires a ground-conforming warm glow disc (each vertex sampled from
+the height field — not a flat quad, which is what v3's pools did wrong),
+merged into **one draw call**, pushed into HDR so the night bloom picks it
+up, and driven by the time state. The night overview now reads as a city
+from a plane window: every street traced in light, the dark-sky eastern
+zone still dark.
+
+Building it reproduced v4's most instructive bug class within the hour: the
+disc fan was wound CCW in plan coordinates, which faces *downward* in
+three.js, so front-face culling removed every pool. The fix is wound to
+face +y and commented for the next person.
+
 ### Animated objects were being baked static (v4 visual bug, fixed)
 
 The merge pass checked `noMerge` only on the mesh itself. A driving car's
