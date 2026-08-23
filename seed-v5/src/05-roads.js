@@ -236,14 +236,21 @@ export class RoadGraph {
     if (sub) { const m = mesh(sub, MAT.gravel, null, null, null, { cast: false });
                m.renderOrder = RENDER_ORDER.subgrade; g.add(m); }
 
-    /* --- 2. carriageway, crowned at 2% */
+    /* --- 2. carriageway, crowned at 2% — with the crown TAPERED to zero over
+       the last 12 m into every node, so the cross-section arrives flat at the
+       mouth and meets the flat intersection paving without a step. The old
+       constant crown left the arterial's edges 0.19 m below the intersection
+       slab at every mouth. */
     const inner = h - sp.gutter;
+    const TAPER = 12;
+    const total = sm.total;
+    const tap = (p) => clamp(Math.min(p.s, total - p.s) / TAPER, 0, 1);
     const car = sweep(sm, [
-      { u: -inner, dy: -inner * crown },
-      { u: -inner * 0.5, dy: -inner * 0.5 * crown },
+      { u: -inner, dy: (p) => -inner * crown * tap(p) },
+      { u: -inner * 0.5, dy: (p) => -inner * 0.5 * crown * tap(p) },
       { u: 0, dy: 0 },
-      { u: inner * 0.5, dy: -inner * 0.5 * crown },
-      { u: inner, dy: -inner * crown },
+      { u: inner * 0.5, dy: (p) => -inner * 0.5 * crown * tap(p) },
+      { u: inner, dy: (p) => -inner * crown * tap(p) },
     ], { lift: ELEV.asphalt, uvScale: 0.14 });
     if (car) { const m = mesh(car, asphaltMat, null, null, null, { cast: false });
                m.renderOrder = RENDER_ORDER.asphalt; g.add(m); }
@@ -251,9 +258,9 @@ export class RoadGraph {
     /* --- 3 + 4 + 5. gutter pan and curb, one swept assembly per side */
     if (sp.curbH > 0) {
       for (const side of [-1, 1]) {
-        const flow = -h * crown - 0.035;
+        const flow = (p) => -h * crown * tap(p) - 0.035;
         const prof = [
-          { u: side * inner, dy: -inner * crown },
+          { u: side * inner, dy: (p) => -inner * crown * tap(p) },
           { u: side * (h - 0.06), dy: flow },
           { u: side * h, dy: flow },
           { u: side * h, dy: sp.curbH },
@@ -274,7 +281,7 @@ export class RoadGraph {
       /* no curb: a graded shoulder tying back into the ground */
       for (const side of [-1, 1]) {
         const sg = sweep(sm, [
-          { u: side * inner, dy: -inner * crown },
+          { u: side * inner, dy: (p) => -inner * crown * tap(p) },
           { u: side * (h + sp.shoulder), dy: 0, toGround: true, groundLift: ELEV.aggregate },
         ], { lift: ELEV.asphalt, uvScale: 0.25 });
         if (sg) { const m = mesh(sg, MAT.gravel, null, null, null, { cast: false });
@@ -282,9 +289,12 @@ export class RoadGraph {
       }
     }
 
-    /* --- 6. markings, generated from the lane spec */
-    for (const mk of (sp.marks || [])) this._marking(g, sm, mk);
-    if (e.opts.marks) for (const mk of e.opts.marks) this._marking(g, sm, mk);
+    /* --- 6. markings, generated from the lane spec. They follow the crown:
+       painted flat they floated 0.16 m above the asphalt at the arterial's
+       edge lines, because the carriageway falls away under them. */
+    const markDy = (p, u) => -Math.min(Math.abs(u), inner) * crown * tap(p);
+    for (const mk of (sp.marks || [])) this._marking(g, sm, mk, markDy);
+    if (e.opts.marks) for (const mk of e.opts.marks) this._marking(g, sm, mk, markDy);
 
     /* --- 7. drainage: catch basins in the gutter, on real spacing */
     if (sp.curbH > 0) {
@@ -335,7 +345,7 @@ export class RoadGraph {
     e.registeredCount = k;
   }
 
-  _marking(parent, sm, mk) {
+  _marking(parent, sm, mk, dyAt) {
     const material = MAT[mk.col] || MAT.markWhite;
     const w = mk.w || 0.12;
     const dash = mk.style === 'dashed' ? (mk.dash || [3, 9]) : null;
@@ -356,8 +366,8 @@ export class RoadGraph {
       if (seg.length < 2) continue;
       seg.total = seg[seg.length - 1].s - seg[0].s;
       const g = sweep(seg, [
-        { u: mk.u - w / 2, dy: 0.0 },
-        { u: mk.u + w / 2, dy: 0.0 },
+        { u: mk.u - w / 2, dy: dyAt ? (p) => dyAt(p, mk.u) : 0.0 },
+        { u: mk.u + w / 2, dy: dyAt ? (p) => dyAt(p, mk.u) : 0.0 },
       ], { lift: ELEV.roadMarking, uvScale: 0.3 });
       if (!g) continue;
       const m = mesh(g, material, null, null, null, { cast: false, receive: false });
@@ -409,8 +419,10 @@ export class RoadGraph {
     }
 
     /* --- paving as one continuous surface clipped to the polygon */
+    /* the same tiling as the carriageway sweep, or the junction reads as a
+       different, darker material dropped on top of the road */
     const cell = Math.max(2.5, n.trim / 6);
-    const pav = polyGrid(poly, cell, ELEV.asphalt);
+    const pav = polyGrid(poly, cell, ELEV.asphalt, null, 0.14);
     if (pav) {
       const m = mesh(pav, MAT.asphalt, null, null, null, { cast: false });
       m.renderOrder = RENDER_ORDER.asphalt;
@@ -470,16 +482,11 @@ export class RoadGraph {
       });
     }
 
-    /* --- control: signals at the arterial, stop signs elsewhere */
-    if (n.type === 'signal') this._signals(g, n, armPts);
-    else if (n.arms.length > 2) {
-      for (const ap of armPts) {
-        if (ap.a.e.opts.priority) continue;
-        const sx = ap.mouth[0] + ap.a.dx * 5 - ap.nx * (ap.a.half + 1.6);
-        const sz = ap.mouth[1] + ap.a.dz * 5 - ap.nz * (ap.a.half + 1.6);
-        g.add(stopSign(sx, sz, Math.atan2(-ap.a.dz, -ap.a.dx)));
-      }
-    }
+    /* --- traffic control lives in 18-intersections, which reads the graph
+       and builds the MUTCD assemblies. The crude in-module version that used
+       to live here ran AS WELL, so every signalised node carried two mast
+       sets — and the crude one's lenses faced the node instead of the
+       approaching driver. One owner now. */
 
     this.group.add(g);
     n.group = g;
@@ -489,7 +496,11 @@ export class RoadGraph {
     const y = groundH(n.x, n.z);
     reserve({
       id: `xn-${n.id}`, layer: LAYER.ROAD,
-      footprint: { poly: poly.filter((p, k) => k % 2 === 0) },
+      /* the FULL outline: the decimated polygon cut inside the corner arcs,
+         which is how canopy trees passed validation while standing on the
+         kerb returns. Clearance keeps planting off the corners entirely. */
+      footprint: { poly },
+      clearance: 2.0,
       y0: y - 0.4, y1: y + 0.5,
       groups: ['road', n.id],
       allowOverlapWith: ['road', ...n.edges.map(({ e }) => e.id), n.id],
@@ -518,7 +529,7 @@ export class RoadGraph {
       const a = -(i / 28) * Math.PI * 2;
       hole.push([cx + Math.cos(a) * RI, cz + Math.sin(a) * RI]);
     }
-    const pav = polyGrid(poly, 1.6, ELEV.asphalt, [hole]);
+    const pav = polyGrid(poly, 1.6, ELEV.asphalt, [hole], 0.14);
     if (pav) { const m = mesh(pav, MAT.asphalt, null, null, null, { cast: false });
                m.renderOrder = RENDER_ORDER.asphalt; g.add(m); }
 
@@ -640,46 +651,6 @@ export class RoadGraph {
     }
   }
 
-  _signals(parent, n, armPts) {
-    for (const ap of armPts) {
-      const bx = ap.mouth[0] + ap.a.dx * 3 - ap.nx * (ap.a.half + 2.0);
-      const bz = ap.mouth[1] + ap.a.dz * 3 - ap.nz * (ap.a.half + 2.0);
-      const y = groundH(bx, bz);
-      const g = new THREE.Group();
-      g.add(mesh(cyl(0.28, 0.34, 0.6, 12), MAT.concretePad, bx, y + 0.3, bz));
-      g.add(mesh(cyl(0.14, 0.16, 7.2, 12), MAT.steelDark, bx, y + 3.9, bz));
-      /* mast arm reaching over the carriageway */
-      const armLen = ap.a.half + 2.5;
-      const ax = bx + ap.nx * armLen / 2, az = bz + ap.nz * armLen / 2;
-      const arm = mesh(box(armLen, 0.20, 0.20), MAT.steelDark, ax, y + 7.0, az,
-        { rotY: -Math.atan2(ap.nz, ap.nx) });
-      g.add(arm);
-      /* two heads with backplates and a pedestrian head with a push button */
-      for (const f of [0.45, 0.85]) {
-        const hx = bx + ap.nx * armLen * f, hz = bz + ap.nz * armLen * f;
-        g.add(mesh(box(0.52, 1.28, 0.16), MAT.steelDark, hx, y + 6.35, hz,
-          { rotY: -Math.atan2(ap.a.dz, ap.a.dx) }));
-        g.add(mesh(box(0.34, 1.02, 0.30), MAT.steelDark, hx, y + 6.35, hz,
-          { rotY: -Math.atan2(ap.a.dz, ap.a.dx) }));
-        for (let k = 0; k < 3; k++) {
-          const col = [MAT.emitRed, MAT.emitAmber, MAT.emitWarm][k];
-          g.add(mesh(cyl(0.10, 0.10, 0.06, 10), col,
-            hx - ap.a.dx * 0.16, y + 6.68 - k * 0.31, hz - ap.a.dz * 0.16, { rotX: Math.PI / 2 }));
-        }
-      }
-      g.add(mesh(box(0.42, 0.42, 0.20), MAT.steelDark, bx, y + 2.9, bz,
-        { rotY: -Math.atan2(ap.a.dz, ap.a.dx) }));
-      g.add(mesh(box(0.10, 0.16, 0.08), MAT.steel, bx + ap.nx * 0.2, y + 1.05, bz + ap.nz * 0.2));
-      parent.add(g);
-    }
-    /* control cabinet */
-    const ap = armPts[0];
-    const cx = n.x + ap.a.dx * (n.trim + 4) - ap.nx * (ap.a.half + 4);
-    const cz = n.z + ap.a.dz * (n.trim + 4) - ap.nz * (ap.a.half + 4);
-    const cy = groundH(cx, cz);
-    parent.add(mesh(box(1.3, 0.15, 0.9), MAT.concretePad, cx, cy + 0.075, cz));
-    parent.add(mesh(box(1.1, 1.5, 0.7), MAT.alu, cx, cy + 0.9, cz));
-  }
 
   /* --------------------------------------------------------------- driveways
      Every lot, dock and service entry connects to a road through a generated
@@ -750,7 +721,8 @@ function lineIntersect(p, d, q, e) {
 }
 
 /* grid-fill a polygon, dropped onto the terrain */
-export function polyGrid(poly, cell, lift, holes) {
+export function polyGrid(poly, cell, lift, holes, uvScale) {
+  const uvs = uvScale || 1;
   let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity;
   for (const p of poly) {
     x0 = Math.min(x0, p[0]); x1 = Math.max(x1, p[0]);
@@ -765,7 +737,7 @@ export function polyGrid(poly, cell, lift, holes) {
       let x = lerp(x0, x1, i / nx), z = lerp(z0, z1, j / nz);
       /* pull boundary vertices onto the polygon edge so the outline is clean */
       pos.push(x, groundH(x, z) + lift, z);
-      uv.push(x, z);
+      uv.push(x * uvs, z * uvs);
     }
   }
   for (let j = 0; j < nz; j++) {

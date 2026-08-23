@@ -86,11 +86,13 @@ export function buildPerimeter(world, roads, pipeline) {
   world.add(g);
   const out = { group: g, anchors: {} };
 
-  /* ================================================== the acoustic wall
-     Swept along the berm crest, standing ON it. s1 says "berm + wall", which
-     means stacked, not coincident. */
+  /* ================================================== the perimeter wall
+     Precast concrete on the fence line, full loop, open only at the gates —
+     the berm is gone (owner direction): the campus edge is a WALL that
+     connects to the gatehouse at every entrance, the way a real secure
+     campus is fenced. */
   {
-    const path = perimeterPath(SITE.bermCrest, 5);
+    const path = perimeterPath(SITE.fenceOffset, 5);
     const runs = splitAtGates(path, 16);
     const H = SITE.wallHeight, T = SITE.wallThick;
     runs.forEach((run, i) => {
@@ -121,76 +123,35 @@ export function buildPerimeter(world, roads, pipeline) {
     for (const gt of SITE.gates) {
       for (const s of [-1, 1]) {
         const along = gt.at + s * (gt.width / 2 + 3);
-        const across = gt.sign * SITE.bermCrest;
+        const across = gt.sign * SITE.fenceOffset;
         const bx = gt.axis === 'z' ? along : across;
         const bz = gt.axis === 'z' ? across : along;
         const ang = gt.axis === 'z' ? 0 : Math.PI / 2;
+        /* The wall RETURNS at each gate: wing walls running OUTWARD along
+           the approach throat, so the perimeter wall physically connects to
+           the gatehouse island instead of stopping dead at the opening.
+           The old version ran the wings inward, away from the guard house. */
         place({
           id: `wall-baffle-${gt.id}-${s}`, layer: LAYER.UTILITY,
-          footprint: { x: bx + (gt.axis === 'z' ? 0 : -gt.sign * 13), z: bz + (gt.axis === 'z' ? -gt.sign * 13 : 0), w: gt.axis === 'z' ? 1.2 : 28, d: gt.axis === 'z' ? 28 : 1.2 },
+          footprint: { x: bx + (gt.axis === 'z' ? 0 : gt.sign * 9), z: bz + (gt.axis === 'z' ? gt.sign * 9 : 0), w: gt.axis === 'z' ? 1.2 : 20, d: gt.axis === 'z' ? 20 : 1.2 },
           y0: groundH(bx, bz) - 1, y1: groundH(bx, bz) + SITE.wallHeight + 1,
-          parent: g, site: 'acoustic baffle return',
+          parent: g, site: 'perimeter wall gate return',
           groups: ['perimeter'], allowOverlapWith: ['perimeter'],
           build: () => {
             const grp = new THREE.Group();
-            const L = 26;
-            for (let k = 0; k <= 12; k++) {
-              const t = k / 12;
-              const px = bx + (gt.axis === 'z' ? 0 : -gt.sign * L * t);
-              const pz = bz + (gt.axis === 'z' ? -gt.sign * L * t : 0);
-              grp.add(mesh(box(gt.axis === 'z' ? 1.0 : 2.4, SITE.wallHeight * (1 - t * 0.45), gt.axis === 'z' ? 2.4 : 1.0),
-                MAT.precast, px, groundH(px, pz) + SITE.wallHeight * (1 - t * 0.45) / 2, pz));
+            const L = 18;
+            for (let k = 0; k <= 9; k++) {
+              const t = k / 9;
+              const px = bx + (gt.axis === 'z' ? 0 : gt.sign * L * t);
+              const pz = bz + (gt.axis === 'z' ? gt.sign * L * t : 0);
+              grp.add(mesh(box(gt.axis === 'z' ? 1.0 : 2.4, SITE.wallHeight * (1 - t * 0.35), gt.axis === 'z' ? 2.4 : 1.0),
+                MAT.precast, px, groundH(px, pz) + SITE.wallHeight * (1 - t * 0.35) / 2, pz));
             }
             return grp;
           },
         });
       }
     }
-  }
-
-  /* ====================================================== the security fence
-     Stated feature i4, and it does not exist in v3 at all. Zoned: the
-     industrial half is secured, the community half is genuinely open. */
-  {
-    const path = perimeterPath(SITE.fenceOffset, 6);
-    const runs = splitAtGates(path, 12);
-    runs.forEach((run, i) => {
-      const sm = resamplePath(run, 3, 0);
-      if (sm.length < 3) return;
-      const cx = sm[Math.floor(sm.length / 2)].x, cz = sm[Math.floor(sm.length / 2)].z;
-      /* the community half (south and east of the plaza) gets a low open
-         estate fence instead of a secure palisade */
-      const secure = cz < 120;
-      registerRun('fence-' + i, run, 0.6, -0.6, secure ? 3.4 : 1.5,
-        LAYER.UTILITY, ['perimeter'], ['perimeter'], ['no-geom-audit']);
-      {
-          const grp = new THREE.Group();
-          grp.name = 'fence-' + i;
-          const H = secure ? 2.9 : 1.25;
-          const posts = [], pickets = [];
-          for (let k = 0; k < sm.length; k++) {
-            const p = sm[k];
-            posts.push({ x: p.x, y: groundH(p.x, p.z) + H / 2 + 0.2, z: p.z, s: 1 });
-          }
-          grp.add(instanced(new THREE.BoxGeometry(0.10, H + 0.4, 0.10), MAT.galv, posts, { receive: false }));
-          const infill = sweep(sm, [
-            { u: -0.02, dy: 0.25 }, { u: -0.02, dy: H },
-            { u: 0.02, dy: H }, { u: 0.02, dy: 0.25 },
-          ], { lift: 0, uvScale: 0.5 });
-          if (infill) {
-            const m = mesh(infill, secure ? MAT.galv : MAT.steelDark, null, null, null, { receive: false });
-            grp.add(m);
-          }
-          /* top rail and, on the secure half, an outrigger */
-          const rail = sweep(sm, [{ u: -0.05, dy: H + 0.05 }, { u: 0.05, dy: H + 0.05 }], { lift: 0 });
-          if (rail) grp.add(mesh(rail, MAT.galv));
-          if (secure) {
-            const out2 = sweep(sm, [{ u: 0.05, dy: H + 0.05 }, { u: 0.42, dy: H + 0.40 }], { lift: 0 });
-            if (out2) grp.add(mesh(out2, MAT.galv, null, null, null, { receive: false }));
-          }
-          g.add(grp);
-      }
-    });
   }
 
   /* ================================================ bioswale valley furniture
@@ -278,15 +239,33 @@ export function buildPerimeter(world, roads, pipeline) {
           grp.add(mesh(cyl(0.09, 0.09, 3.6, 8), MAT.steelDark,
             p.x + sx * (p.w / 2 + 1.4), gy + 1.9, p.z + sz * (p.d / 2 + 1.4)));
         }
-        /* two barrier arms: a visitor lane and a truck lane, and a camera mast */
-        for (let i = 0; i < 2; i++) {
-          const bx = p.x - 9 - i * 9;
-          grp.add(mesh(box(0.5, 1.15, 0.5), MAT.steel, bx, gy + 0.58, p.z));
-          const arm = mesh(box(7.2, 0.14, 0.20), MAT.markRed, bx - 3.6, gy + 1.05, p.z);
-          arm.name = 'gate-arm-' + i;
+        /* Barrier arms ACROSS the lanes. The approach carriageway runs along
+           x = 0, half-width 4.5: the inbound (west) lane gets an arm just
+           north of the island, the outbound (east) lane just south, each
+           spanning its lane from a pedestal at the lane edge. The old arms
+           sat beside the road and read as furniture in the grass. */
+        for (const lane of [
+          { x0: -4.9, x1: -0.2, z: p.z - 5.2 },   /* inbound, arm before the island */
+          { x0: 0.2, x1: 4.9, z: p.z + 5.2 },     /* outbound */
+        ]) {
+          const px = lane.x0 < 0 ? lane.x0 - 0.45 : lane.x1 + 0.45;
+          grp.add(mesh(box(0.45, 1.15, 0.45), MAT.steel, px, groundH(px, lane.z) + 0.58, lane.z));
+          const span = lane.x1 - lane.x0;
+          const cx = (lane.x0 + lane.x1) / 2;
+          const arm = mesh(box(span, 0.14, 0.20), MAT.markRed,
+            cx, groundH(cx, lane.z) + 1.02, lane.z);
+          arm.name = 'gate-arm-' + (lane.x0 < 0 ? 'in' : 'out');
           grp.add(arm);
-          grp.add(mesh(box(0.9, 0.06, 0.5), MAT.markYellow, bx + 3, gy + 0.03 + ELEV.decal, p.z, { cast: false }));
+          /* stop line on the pavement ahead of the arm */
+          grp.add(mesh(box(span, 0.05, 0.45), MAT.markWhite,
+            cx, groundH(cx, lane.z) + ELEV.roadMarking + 0.06,
+            lane.z + (lane.x0 < 0 ? -2.2 : 2.2), { cast: false, receive: false }));
         }
+        /* the stub that ties the gatehouse to the perimeter wall's gate
+           return, so wall -> wing -> guard house is one continuous line */
+        const wingX = 20;
+        grp.add(mesh(box(wingX - (p.x + p.w / 2) + 0.6, 2.6, 0.6), MAT.precast,
+          (p.x + p.w / 2 + wingX) / 2, gy + 1.3, p.z));
         grp.add(mesh(cyl(0.11, 0.14, 9, 10), MAT.galv, p.x + 7, gy + 4.5, p.z + 2));
         for (let i = 0; i < 3; i++) {
           grp.add(mesh(box(0.34, 0.18, 0.22), MAT.steelDark,

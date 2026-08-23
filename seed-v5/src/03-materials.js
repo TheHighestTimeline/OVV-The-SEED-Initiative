@@ -1217,7 +1217,11 @@ export function buildTerrainMaterial(quality) {
         splat( sAlb, sNrm, sRo );
         diffuseColor.rgb *= sAlb;`)
       .replace('#include <roughnessmap_fragment>', `
-        float roughnessFactor = roughness * clamp( sRo.y, 0.04, 1.0 );`)
+        // floor at 0.55: ground is never glossier than damp soil. The old
+        // 0.04 floor let the splat data drop the graded corridors to near
+        // mirror, which painted a blinding specular band along the gate
+        // approach at every grazing camera angle.
+        float roughnessFactor = roughness * clamp( sRo.y, 0.55, 1.0 );`)
       .replace('#include <normal_fragment_maps>', `
         // world-space perturbation: the terrain's tangent frame is X/Z with Y up,
         // so the map's x,y go to world x,z. The previous basis put the map's y

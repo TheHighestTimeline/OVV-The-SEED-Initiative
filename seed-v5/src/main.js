@@ -451,6 +451,26 @@ async function main() {
   window.__seedWalk = (x, z, h) => { state.enterWalk(x, z, h); return player.readout(); };
   window.__seedPlayer = () => player.readout();
   window.__seedView = (i) => { orbit.goTo(VIEWS[clamp(i, 0, VIEWS.length - 1)], true); orbit.update(); };
+  /* what is under this screen point? (nx, ny in [-1,1], y up) — harness use */
+  window.__seedPick = (nx, ny) => {
+    const rc = new THREE.Raycaster();
+    rc.setFromCamera(new THREE.Vector2(nx, ny), pipe.camera);
+    return rc.intersectObjects(pipe.scene.children, true).slice(0, 5).map((h) => {
+      const chain = [];
+      let o = h.object;
+      while (o && o !== pipe.scene) { chain.unshift(o.name || o.type); o = o.parent; }
+      return { d: +h.distance.toFixed(1), path: chain.join('/'),
+               mat: h.object.material && h.object.material.name,
+               y: +h.point.y.toFixed(2) };
+    });
+  };
+  /* free camera for the verification harness: aim at a world point */
+  window.__seedGoto = (x, z, dist, theta, phi) => {
+    orbit.goTo({ target: [x, groundH(x, z), z], dist: dist || 120,
+                 theta: theta != null ? theta : -0.8,
+                 phi: phi != null ? phi : 1.0 }, true);
+    orbit.update();
+  };
   /* deferred verification */
   state.auditPending = true;
   setTimeout(() => {

@@ -492,8 +492,11 @@ function pondCut(x, z) {
     if (d > lip) continue;
     const bowl = p.level - p.depth * (1 - Math.pow(clamp(d / p.r, 0, 1), 2));
     if (d <= p.r) return bowl;
+    /* the bank rises FROM the waterline: the old blend started 0.15 m BELOW
+       water level, which put a submerged notch all round the rim and made
+       the water disc read as a plate floating over the lawn */
     const t = smootherstep(p.r, lip, d);
-    return lerp(p.level - 0.15, SITE.padY, t);
+    return lerp(p.level + 0.05, SITE.padY, t);
   }
   return null;
 }
@@ -613,11 +616,19 @@ function buildChunk(x0, x1, z0, z1, cell, hole) {
   const cols = nx + 1, rows = nz + 1;
   const H = new Float32Array(cols * rows);
 
+  /* Cells overlapping the finer ring's hole are BUILT, with their inside
+     vertices tucked 0.6 m under the finer terrain — a shingle lap, the way
+     a clipmap closes LOD seams. Cutting exactly at the hole edge left a
+     coverage gap up to one cell wide, and the bright 8 m skirt curtain
+     showed through it as a white band across the gate approach. */
+  const inHole = (px, pz, m) => hole &&
+    px > hole[0] + m && px < hole[1] - m && pz > hole[2] + m && pz < hole[3] - m;
   for (let j = 0; j <= nz; j++) {
     for (let i = 0; i <= nx; i++) {
       const x = x0 + (i / nx) * (x1 - x0);
       const z = z0 + (j / nz) * (z1 - z0);
-      const y = groundH(x, z);
+      let y = groundH(x, z);
+      if (inHole(x, z, cell * 0.4)) y -= 0.6;
       H[j * cols + i] = y;
       const n = siteNormal(x, z, Math.max(1, cell * 0.5));
       const sl = Math.acos(clamp(n.y, -1, 1));
@@ -639,7 +650,9 @@ function buildChunk(x0, x1, z0, z1, cell, hole) {
       if (hole) {
         const cx = x0 + ((i + 0.5) / nx) * (x1 - x0);
         const cz = z0 + ((j + 0.5) / nz) * (z1 - z0);
-        if (cx > hole[0] && cx < hole[1] && cz > hole[2] && cz < hole[3]) continue;
+        /* skip only cells a full lap INSIDE the hole; boundary cells build
+           and shingle under the finer ring */
+        if (inHole(cx, cz, cell * 1.6)) continue;
       }
       const a = j * cols + i, b = a + 1, c = a + cols, d = c + 1;
       idx.push(a, c, b, b, c, d);

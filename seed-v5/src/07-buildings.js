@@ -287,8 +287,10 @@ export function buildBuilding(spec) {
     const tilt = 12 * DEG;
     const panelW = 1.05, panelL = 1.75;
     const rowPitch = 3.0, colPitch = 1.12;
-    const rackY = roofY + 0.34;                  /* clear of the membrane */
-    const panels = [], rails = [], ballast = [];
+    const rackY = roofY + 0.10;                  /* clear of the membrane */
+    const panels = [], rails = [], ballast = [], legsF = [], legsR = [];
+    /* local +z of a panel (its length axis) in world space, for leg offsets */
+    const lenDir = rot2(0, 1, rot);
     const rows = Math.floor((d - ringT * 2 - 5) / rowPitch);
     const cols = Math.floor((w - ringT * 2 - 5) / colPitch);
     for (let ri = 0; ri < rows; ri++) {
@@ -298,7 +300,14 @@ export function buildBuilding(spec) {
         const lx = (ci - (cols - 1) / 2) * colPitch;
         if (!plan.free(lx, lz, colPitch, panelL + 0.4)) { runStart = null; continue; }
         const [px, pz] = toWorld(lx, lz);
-        panels.push({ x: px, y: rackY + 0.42, z: pz, rx: -tilt, ry: rot, s: 1 });
+        /* low ballasted tilt rack: front edge ~0.2 m off the membrane, rear
+           ~0.55, with a visible leg pair per panel. The old 0.76 m rack with
+           one hidden centre rail read as panels hovering over the roof. */
+        panels.push({ x: px, y: rackY + 0.28, z: pz, rx: -tilt, ry: rot, s: 1 });
+        legsF.push({ x: px - lenDir[0] * 0.62, y: rackY + 0.07,
+                     z: pz - lenDir[1] * 0.62, ry: rot, s: 1 });
+        legsR.push({ x: px + lenDir[0] * 0.62, y: rackY + 0.22,
+                     z: pz + lenDir[1] * 0.62, ry: rot, s: 1 });
         pvArea += panelW * panelL;
         if (runStart === null) runStart = lx;
         if (ci % 4 === 0) {
@@ -307,7 +316,7 @@ export function buildBuilding(spec) {
       }
       if (runStart !== null) {
         const [rx, rz] = toWorld(0, lz);
-        rails.push({ x: rx, y: rackY + 0.20, z: rz, ry: rot, s: 1 });
+        rails.push({ x: rx, y: rackY + 0.10, z: rz, ry: rot, s: 1 });
       }
     }
     if (panels.length) {
@@ -319,6 +328,10 @@ export function buildBuilding(spec) {
       g.add(instanced(bg, MAT.concretePad, ballast, { cast: false }));
       const rg = new THREE.BoxGeometry(w - ringT * 2 - 4.6, 0.09, 0.09);
       g.add(instanced(rg, MAT.alu, rails, { cast: false }));
+      const lgF = new THREE.BoxGeometry(0.9, 0.14, 0.07);
+      g.add(instanced(lgF, MAT.alu, legsF, { cast: false, receive: false }));
+      const lgR = new THREE.BoxGeometry(0.9, 0.44, 0.07);
+      g.add(instanced(lgR, MAT.alu, legsR, { cast: false, receive: false }));
       /* inverter string at the service face */
       const sN = rot2(FACE[serviceFace].dx, FACE[serviceFace].dz, rot);
       for (let i = 0; i < 3; i++) {

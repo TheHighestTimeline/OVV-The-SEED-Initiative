@@ -224,7 +224,8 @@ export function waterPlane(x0, x1, z0, z1, level, material, cell) {
 
 /* a water surface clipped to a circular pond bowl */
 export function pondSurface(p, material) {
-  const g = new THREE.CircleGeometry(p.r, 48, 0, Math.PI * 2);
+  /* just inside the waterline, so the disc edge always meets a rising bank */
+  const g = new THREE.CircleGeometry(p.r * 0.97, 48, 0, Math.PI * 2);
   g.rotateX(-Math.PI / 2);
   g.translate(p.x, p.level, p.z);
   const m = new THREE.Mesh(g, material);

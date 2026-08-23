@@ -341,12 +341,14 @@ export function buildCoast(world, roads, walks, pipeline) {
       const grp = new THREE.Group();
       const slats = [], posts = [];
       for (let x = -1300; x < 1300; x += 0.32) {
-        if (Math.abs(x - inletCentre(1300)) < INLET.halfW + 40) continue;
         const run = Math.floor((x + 1300) / 62);
         if ((x + 1300) % 62 > 48) continue;               /* staggered gaps */
         const z = SITE.duneCrestZ + 26 + (run % 2) * 10 + Math.sin(x * 0.004) * 8;
+        /* the inlet MEANDERS: testing its centre at a fixed z let a fence
+           run march straight across the water where the channel had swung */
+        if (Math.abs(x - inletCentre(z)) < INLET.halfW + 40) continue;
         const gy = siteH(x, z);
-        if (gy < 0.6) continue;
+        if (gy < 0.9) continue;
         slats.push({ x, y: gy + 0.55, z, ry: 0.02 * Math.sin(x), s: 1 });
         if (Math.abs(x % 2.4) < 0.32) posts.push({ x, y: gy + 0.7, z, s: 1 });
       }

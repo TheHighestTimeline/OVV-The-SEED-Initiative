@@ -540,7 +540,10 @@ export function buildCampus(world, roads, walks) {
       id: 'ponds', layer: LAYER.WATER,
       footprint: { poly: [[286, -338], [374, -338], [374, -56], [286, -56]] },
       y0: 14, y1: 17.2, parent: g, site: 'constructed wetland ponds',
-      groups: ['water'], allowOverlapWith: ['walk', 'water', 'VEGETATION'],
+      /* NOT a blanket VEGETATION allowance: that let the campus canopy
+         scatter stand trees in open water. Bank species declare their own
+         water overlap; everything else is rejected. */
+      groups: ['water'], allowOverlapWith: ['walk', 'water'],
       tags: ['no-geom-audit'],
       build: () => grp,
     });
@@ -559,19 +562,41 @@ export function buildCampus(world, roads, walks) {
       groups: ['agri'], allowOverlapWith: ['VEGETATION'],
       build: () => {
         const grp = new THREE.Group();
-        const panels = [], posts = [];
-        const rows = 12, perRow = 9;
+        /* Single-axis tracker rows, the way a real agrivoltaic array is
+           built: a torque tube runs the length of each row on posts at
+           ~7 m spacing, and short panel modules tilt ABOUT the tube. The
+           old version hung 8.6 m panels every 4.25 m (they interpenetrated)
+           and gave two thirds of them no post at all, so the array read as
+           slabs floating over the pasture. Every module now sits on the
+           tube and every tube sits on posts that reach the ground. */
+        const panels = [], posts = [], tubes = [];
+        const rows = 12;
+        const tilt = -22 * DEG;
+        const hubH = 3.2;                      /* tube height over ground   */
+        const rowLen = ad - 14;
+        const z0 = az - rowLen / 2;
         for (let i = 0; i < rows; i++) {
           const px = ax - aw / 2 + 5 + i * ((aw - 10) / (rows - 1));
-          for (let j = 0; j < perRow; j++) {
-            const pz = az - ad / 2 + 8 + j * ((ad - 16) / (perRow - 1));
+          /* posts, then one tube segment between each post pair */
+          const nPost = Math.ceil(rowLen / 7) + 1;
+          for (let k = 0; k < nPost; k++) {
+            const pz = z0 + (k / (nPost - 1)) * rowLen;
+            const py = groundH(px, pz);
+            posts.push({ x: px, y: py + hubH / 2, z: pz, sy: hubH / 3.5 });
+          }
+          /* modules every 4.2 m, 4.0 m long, tilted about the row axis */
+          const nMod = Math.floor(rowLen / 4.2);
+          for (let k = 0; k < nMod; k++) {
+            const pz = z0 + 2.1 + k * 4.2;
             const by = groundH(px, pz);
-            panels.push({ x: px, y: by + 3.5, z: pz, rx: -22 * DEG, s: 1 });
-            if (j % 3 === 0) posts.push({ x: px, y: by + 1.75, z: pz, s: 1 });
+            panels.push({ x: px, y: by + hubH + 0.12, z: pz, rz: tilt, s: 1 });
+            tubes.push({ x: px, y: by + hubH, z: pz, rx: Math.PI / 2, s: 1 });
           }
         }
-        grp.add(instanced(new THREE.BoxGeometry(3.4, 0.05, 8.6), MAT.pv, panels,
+        grp.add(instanced(new THREE.BoxGeometry(3.4, 0.06, 4.0), MAT.pv, panels,
           { cast: true, receive: false }));
+        grp.add(instanced(new THREE.CylinderGeometry(0.07, 0.07, 4.2, 6), MAT.galv, tubes,
+          { cast: false, receive: false }));
         grp.add(instanced(new THREE.CylinderGeometry(0.09, 0.11, 3.5, 8), MAT.galv, posts));
         return grp;
       },

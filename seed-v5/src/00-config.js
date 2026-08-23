@@ -178,13 +178,18 @@ export const SITE = {
   swaleRun:      6.0,        /* batter run; 1.2 rise over 4.8 straight = 4:1 */
   swaleFillet:   1.2,
   bermToeIn:     424,
-  bermHeight:    12,
+  bermHeight:    0,          /* the earth berm is GONE (owner direction,
+                                2026-08-23): the perimeter is a precast
+                                concrete wall on the fence line, connected
+                                to the gatehouses. The toe/crest offsets
+                                stay as landmarks for the outfall and the
+                                planted screen, now on flat ground. */
   bermRun:       42,         /* 12 rise over 36 straight = exactly 3:1 */
   bermFillet:    6,          /* rounded toe and crest, as real earthwork is */
   bermCrestHalf:  3,
   bermCrest:     469,        /* toeIn + run + crestHalf */
   bermToeOut:    514,        /* crest + crestHalf + run */
-  wallHeight:    4.0,        /* acoustic wall standing ON the berm crest */
+  wallHeight:    3.6,        /* precast perimeter wall on the fence line */
   wallThick:     0.65,
   boundary:      560,
 

@@ -260,7 +260,8 @@ export function buildVegetation(world) {
   });
   for (const p of PONDS) {
     for (let i = 0; i < 60; i++) {
-      const a = r() * Math.PI * 2, d = p.r + 4 + r() * 16;
+      /* on the upper bank, clear of the waterline */
+      const a = r() * Math.PI * 2, d = p.r + 7 + r() * 13;
       add(r() > 0.5 ? 'riverbirch' : 'waxmyrtle', p.x + Math.cos(a) * d, p.z + Math.sin(a) * d,
         { clearance: 0.5, allow: ['water'] });
     }

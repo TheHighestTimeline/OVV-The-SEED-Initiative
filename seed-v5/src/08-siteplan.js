@@ -5,7 +5,7 @@
    reads from here, and the validator checks it.
    ========================================================================== */
 
-import { SITE } from './00-config.js';
+import { SITE, lerp } from './00-config.js';
 import { RoadGraph } from './05-roads.js';
 import { WalkGraph } from './06-walks.js';
 import { resamplePath } from './geom.js';
@@ -47,7 +47,9 @@ export const PLOTS = {
   agri:    { x: 322, z: 330, w: 72, d: 50 },
   lotA:    { x: 90, z: 95, w: 150, d: 70 },
   lotB:    { x: 237, z: 105, w: 105, d: 60 },
-  gatehouse:{ x: 26, z: -410, w: 9, d: 7 },
+  /* just behind the east sidewalk of the approach — close enough to work
+     the lane, clear of the walk. It used to float 21 m out in the grass. */
+  gatehouse:{ x: 13.9, z: -410, w: 6.4, d: 7 },
   farmstand:{ x: 132, z: 200, w: 18, d: 10 },
   restroom:{ x: -34, z: 196, w: 16, d: 9 },
 };
@@ -256,30 +258,62 @@ export function buildWalkNetwork(roads) {
     }
   }
 
-  /* ---- stitch the sidewalks together at every shared road node, and add a
-     marked crossing wherever a route has to cross a carriageway */
+  /* ---- stitch the sidewalks together at every shared road node.
+     The old rule connected ANY two ends under 26 m with a straight walk —
+     which included ends on opposite sides of a mouth, so sidewalks ran
+     straight across the middle of every intersection — and linked ends 26 to
+     70 m apart as "crossings", which included the diagonals. A real corner
+     is: walks on the SAME corner sweep around the kerb return; walks on
+     opposite sides of the SAME road cross at the marked crosswalk; nothing
+     ever cuts the diagonal. */
   for (const n of roads.nodes.values()) {
     const ends = [];
     for (const { e, end } of n.edges) {
       if (!e.walkNodes) continue;
       for (const side of Object.keys(e.walkNodes)) {
-        ends.push({ id: e.walkNodes[side][end === 'a' ? 'a' : 'b'], e, side: +side });
+        const id = e.walkNodes[side][end === 'a' ? 'a' : 'b'];
+        const wn = w.nodes.get(id);
+        if (!wn) continue;
+        ends.push({
+          id, e, side: +side, x: wn.x, z: wn.z,
+          ang: Math.atan2(wn.z - n.z, wn.x - n.x),
+          dist: Math.hypot(wn.x - n.x, wn.z - n.z),
+        });
       }
     }
+    /* corner connectors: angularly adjacent ends of two DIFFERENT roads,
+       routed through a waypoint on the corner arc so the walk goes around
+       the return, never across the pavement */
+    ends.sort((a, b) => a.ang - b.ang);
+    for (let i = 0; i < ends.length; i++) {
+      const A = ends[i], B = ends[(i + 1) % ends.length];
+      if (!B || A === B) continue;
+      if (A.e === B.e && A.side !== B.side) continue;   /* that pair is a crossing */
+      let dAng = B.ang - A.ang;
+      if (dAng <= 0) dAng += Math.PI * 2;
+      const d = Math.hypot(A.x - B.x, A.z - B.z);
+      if (d < 0.5 || d > 34 || dAng > 2.4) continue;
+      /* The corner walk hugs the kerb return: radius interpolates from one
+         end's offset to the other's (two roads of different widths meet at
+         every corner), pulled slightly inside the chord so it stays over
+         road-owned ground instead of swinging into the corner lot. */
+      const r1 = lerp(A.dist, B.dist, 0.33) * 0.93;
+      const r2 = lerp(A.dist, B.dist, 0.67) * 0.93;
+      const w1 = A.ang + dAng * 0.33, w2 = A.ang + dAng * 0.67;
+      w.edge(`swx-${n.id}-${i}`, A.id, B.id, 'sidewalk',
+        [[n.x + Math.cos(w1) * r1, n.z + Math.sin(w1) * r1],
+         [n.x + Math.cos(w2) * r2, n.z + Math.sin(w2) * r2]],
+        { allow: ['road', 'apron', n.id, A.e.id, B.e.id], fillet: 5 });
+    }
+    /* crossings: the two sides of one road, at this node's mouth, linked
+       across the carriageway where the road builder paints the crosswalk */
     for (let i = 0; i < ends.length; i++) {
       for (let j = i + 1; j < ends.length; j++) {
-        const A = w.nodes.get(ends[i].id), B = w.nodes.get(ends[j].id);
-        if (!A || !B) continue;
+        const A = ends[i], B = ends[j];
+        if (A.e !== B.e || A.side === B.side) continue;
         const d = Math.hypot(A.x - B.x, A.z - B.z);
-        if (d < 0.5) continue;
-        if (d < 26) {
-          /* same corner: a short connecting walk around the return */
-          w.edge(`swx-${n.id}-${i}-${j}`, A.id, B.id, 'sidewalk', null,
-            { allow: ['road', 'apron', n.id, ends[i].e.id, ends[j].e.id], fillet: 4 });
-        } else if (d < 70) {
-          /* opposite sides of a carriageway: a marked crossing */
-          w.crossing(`cross-${n.id}-${i}-${j}`, A.id, B.id, n.id);
-        }
+        if (d < 0.5 || d > 46) continue;
+        w.crossing(`cross-${n.id}-${i}-${j}`, A.id, B.id, n.id);
       }
     }
   }
@@ -364,7 +398,10 @@ export function buildWalkNetwork(roads) {
   /* ---- gatehouse and transit */
   N('p-gate', 14, -404, 'entry');
   N('p-transit', -18, -672, 'transit');
-  w.edge('w-gate', 'p-gate', 'p-iaN', 'sidewalk', [[-40, -392]], { allow: ['road', 'apron'] });
+  /* the pedestrian route passes THROUGH the gate opening beside the road,
+     then turns west inside the wall — it used to cut the wall line 23 m west
+     of the opening, straight through where the wall now stands */
+  w.edge('w-gate', 'p-gate', 'p-iaN', 'sidewalk', [[-8, -393], [-70, -378]], { allow: ['road', 'apron'] });
   w.edge('w-gate2', 'p-gate', 'p-lln', 'sidewalk', [[10, -382], [70, -370]], { allow: ['road', 'apron'] });
 
   /* ---- the watershed corridor trail, running from the south gate to the

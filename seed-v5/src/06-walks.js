@@ -247,10 +247,17 @@ export class WalkGraph {
      pond. */
   _boardwalk(parent, e, sm, hw) {
     const deckH = e.opts.deckHeight || 1.15;
+    const elevated = e.spec.elevated || e.opts.elevated;
     const yAt = (x, z) => {
       const w = waterY(x, z);
       const g = groundH(x, z);
-      return (w ? Math.max(w.y, g) : g) + deckH;
+      if (elevated) return (w ? Math.max(w.y, g) : g) + deckH;
+      /* A pond boardwalk rides LOW: 0.45 m freeboard over the water, and on
+         land it comes down to a timber walk just over grade. The old rule
+         held deckH above the GROUND everywhere, so the deck and its rails
+         flew 1.15 m over dry land on both approaches. */
+      const overWater = w ? w.y + 0.45 : -Infinity;
+      return Math.max(overWater, g + 0.18);
     };
     /* deck */
     const deck = sweep(sm, [

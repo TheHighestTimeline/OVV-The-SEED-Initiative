@@ -38,7 +38,7 @@ const HERITAGE_SPOTS = [
     stats: [['0', 'm of bulkhead'], ['680 m', 'of treated shoreline'], ['3', 'sill types'], ['Yes', 'self-maintaining']],
     rows: [['Method', 'Oyster-bag sills break the wave energy, marsh plugs hold the sediment, coir logs buy the planting time to establish. The shoreline gains material instead of losing it.'],
            ['Why not a wall', 'A bulkhead reflects wave energy and scours the toe. Within a decade it needs a bigger wall. A living shoreline gets stronger.']],
-    note: 'The same principle as the berm: work with the load rather than against it.',
+    note: 'Work with the load rather than against it.',
     tags: ['oyster reef', 'marsh', 'no bulkhead'] },
   { id: 'h4', cat: 'heritage', t: 'Ocean and beach cleanup',
     k: 'A skimmer, two RIBs, a collection barge and a shore crew. The operation did not stop when the campus opened.',
@@ -87,11 +87,11 @@ const ANCHOR = {
   a1: [-218, 60, 245],  a2: [126, 23, 832],   a3: [-240, 34, 118],
   a4: [-330, 24, -330],
   /* sound */
-  s1: [-260, 40, 469],  s2: [-330, 24, 280],  s3: [-260, 26, -868],
+  s1: [-260, 23, 396],  s2: [-330, 24, 280],  s3: [-260, 26, -868],
   s4: [-330, 22, 60],
   /* infrastructure */
   i1: [-240, 40, -208], i2: [-60, 31, -300],  i3: [0, 26, -420],
-  i4: [26, 25, -410],
+  i4: [13.9, 25, -410],
   /* community */
   m1: [-90, 30, 280],  m2: [55, 26, 296],    m3: [227, 27, -266],
   m4: [228, 30, -100],   m5: [230, 28, -40],
