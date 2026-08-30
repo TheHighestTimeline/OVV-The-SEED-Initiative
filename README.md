@@ -65,6 +65,7 @@ problems, zero unreachable pedestrian destinations.
 | [`seed-v5/src/spec/`](seed-v5/src/spec/) | dimensional standards, with the self-audit |
 | [`seed-v5/src/infra/`](seed-v5/src/infra/) | components built from those standards |
 | [`V5_BUILD_REPORT.md`](V5_BUILD_REPORT.md) | the v5 build report |
+| [`FEATURED_ITEMS.md`](FEATURED_ITEMS.md) | every featured item in the world, by category |
 | [`V4_BUILD_REPORT.md`](V4_BUILD_REPORT.md) | the v4 build report, including what was not met |
 | [`seed-v4/`](seed-v4/) | the previous generation of the app |
 | `OVMG_SEED_3DCampus_v3_Analysis_*.md` | the v3 defect analysis that drove v4 |
