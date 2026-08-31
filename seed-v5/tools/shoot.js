@@ -18,12 +18,21 @@ if (!fs.existsSync(file)) { console.error('no build at', file); process.exit(1);
 /* The bundled ms-playwright chromium on this machine is corrupt (side-by-side
    configuration error), so fall back through the browsers that actually run. */
 const candidates = [
+  process.env.SEED_CHROME || '',
   path.join(process.env.LOCALAPPDATA || '',
     'ms-playwright', 'chromium_headless_shell-1234', 'chrome-win64', 'headless_shell.exe'),
   'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
   'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe',
+  /* linux: any chromium playwright has unpacked, whatever its build number */
+  ...(fs.existsSync('/opt/pw-browsers') ? fs.readdirSync('/opt/pw-browsers')
+      .filter((d) => d.startsWith('chromium'))
+      .flatMap((d) => [
+        path.join('/opt/pw-browsers', d, 'chrome-linux', 'chrome'),
+        path.join('/opt/pw-browsers', d, 'chrome-linux', 'headless_shell'),
+      ]) : []),
+  '/usr/bin/chromium', '/usr/bin/google-chrome',
 ];
-const exe = candidates.find((p) => fs.existsSync(p));
+const exe = candidates.filter(Boolean).find((p) => fs.existsSync(p));
 
 const browser = await chromium.launch({
   executablePath: exe,
