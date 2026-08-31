@@ -3,3 +3,7 @@ dist/
 shots/
 .vite/
 *.log
+
+# fetch-assets scratch (the unpacked maps themselves are committed)
+public/assets/materials/.*.zip
+public/assets/materials/.*.unzip/

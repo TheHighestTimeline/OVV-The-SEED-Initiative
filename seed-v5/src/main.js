@@ -10,6 +10,7 @@ import {
 import { buildTerrain, groundH, siteH } from './01-terrain.js';
 import { registry, setRoot } from './02-registry.js';
 import { buildMaterialLibrary, buildTerrainMaterial, freezeMaterials, MAT, materialList } from './03-materials.js';
+import { loadScanned, scannedReport } from './scanned.js';
 import { RenderPipeline, detectTier } from './04-render.js';
 import { buildRoadNetwork, buildWalkNetwork, wireDestinations, PLOTS } from './08-siteplan.js';
 import { slopeAudit } from './06-walks.js';
@@ -184,6 +185,19 @@ async function main() {
   setRoot(world);
   registry.root = world;
   state.world = world;
+
+  /* Photographed sets take over from the generated ones where they exist.
+     Fail-soft by design: with no assets on disk this resolves empty and the
+     world builds exactly as before. */
+  await progress('loading materials');
+  const scan = await loadScanned({ anisotropy: pipe.tier.anisotropy || 8 });
+  if (scan.loaded.length) {
+    console.info(`[materials] ${scan.loaded.length}/${scan.expected.length} scanned sets:`,
+                 scan.loaded.join(', '));
+  } else {
+    console.info('[materials] all surfaces generated' +
+                 (scan.skipReason ? ` (${scan.skipReason})` : ''));
+  }
 
   await progress('generating materials');
   buildMaterialLibrary(pipe.gl, pipe.tier);

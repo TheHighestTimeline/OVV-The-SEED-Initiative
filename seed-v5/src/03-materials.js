@@ -15,6 +15,7 @@
    ========================================================================== */
 
 import * as THREE from 'three';
+import { hasScanned, getScanned } from './scanned.js';
 import { TEXTURE_SIZE, stream, clamp, lerp } from './00-config.js';
 
 let MAXANISO = 8;
@@ -722,6 +723,14 @@ const rawCache = new Map();
 
 function buildSurfaceRaw(name) {
   if (rawCache.has(name)) return rawCache.get(name);
+  /* A photographed set, if one was found on disk, stands in for the generated
+     one. Noise gives a plausible value range and no structure; a scan gives
+     graded aggregate, trowel direction and wear. See scanned.js. */
+  if (hasScanned(name)) {
+    const set = getScanned(name);
+    rawCache.set(name, set);
+    return set;
+  }
   const def = SURFACES[name];
   if (!def) throw new Error(`[materials] unknown surface "${name}"`);
   const n = Math.min(def.size, SIZE);
@@ -779,6 +788,8 @@ export function surface(name, repeatU, repeatV) {
   if (repeatU === 1 && repeatV === 1) { tiledCache.set(key, raw); return raw; }
   const set = { size: raw.size };
   for (const k of ['albedo', 'normal', 'orm']) {
+    /* a scanned set may legitimately carry no normal map */
+    if (!raw[k]) { set[k] = null; continue; }
     const t = raw[k].clone();          /* shares .source: one GPU upload */
     t.repeat.set(repeatU, repeatV);
     t.needsUpdate = true;
