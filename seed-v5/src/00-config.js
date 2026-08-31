@@ -15,7 +15,15 @@ export const BUILD_DATE = '2026-08-23';
    is an hour fed to the same physical pipeline; the environment map and fog
    probe are baked per state and cached, so the toggle is a hard swap. */
 export const TIME_STATES = {
-  afternoon: 15.5,   /* ~27 deg sun elevation — long soft shadows */
+  /* Golden hour, not mid-afternoon. The old value was 15.5 h, commented as
+     "~27 deg" — at 34.617 N on day 135 it is actually 41.1 deg, which is
+     near-noon light: the key comes in almost overhead, shadows collapse under
+     their own objects and every surface flattens out. 18.0 h puts the sun at
+     10.5 deg, azimuth 286 (WNW), so shadows run about 5.4x object height and
+     the sky/sun warm chain in setTimeOfDay actually engages. Run
+     `node -e` over sunAngles() before changing this — the elevation is what
+     matters, the clock time is just how it is reached. */
+  afternoon: 18.0,   /* 10.5 deg sun elevation — long raking shadows */
   night: 21.6,       /* street lights on, windows lit, dark-sky east */
 };
 

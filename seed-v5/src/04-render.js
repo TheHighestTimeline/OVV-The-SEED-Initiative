@@ -412,16 +412,24 @@ export class RenderPipeline {
 
     composer.addPass(new OutputPass());
 
-    if (t.post.grain) {
+    /* Grade + grain. The grade is the look and runs on every tier; grain is a
+       garnish and drops out on the tiers that used to gate this whole pass. */
+    {
       const grain = new ShaderPass({
         uniforms: {
           tDiffuse: { value: null }, uTime: { value: 0 },
-          uAmount: { value: 0.028 }, uVignette: { value: 0.34 }, uAberr: { value: 0.0016 },
+          uAmount: { value: t.post.grain ? 0.028 : 0.0 },
+          uVignette: { value: 0.34 }, uAberr: { value: t.post.grain ? 0.0016 : 0.0 },
+          uSat: { value: 1.16 }, uContrast: { value: 1.10 }, uGradeMix: { value: 1.0 },
+          uShadowTint: { value: new THREE.Vector3(0.90, 0.96, 1.11) },
+          uHighTint: { value: new THREE.Vector3(1.09, 1.01, 0.91) },
         },
         vertexShader: `varying vec2 vUv; void main(){ vUv = uv;
           gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 ); }`,
         fragmentShader: `
-          uniform sampler2D tDiffuse; uniform float uTime, uAmount, uVignette, uAberr;
+          uniform sampler2D tDiffuse;
+          uniform float uTime, uAmount, uVignette, uAberr, uSat, uContrast, uGradeMix;
+          uniform vec3 uShadowTint, uHighTint;
           varying vec2 vUv;
           float h21( vec2 p ){ return fract( sin( dot( p, vec2( 127.1, 311.7 ) ) ) * 43758.5453 ); }
           void main(){
@@ -433,6 +441,23 @@ export class RenderPipeline {
             col.r = texture2D( tDiffuse, vUv + off ).r;
             col.g = texture2D( tDiffuse, vUv ).g;
             col.b = texture2D( tDiffuse, vUv - off ).b;
+
+            // ---- grade ------------------------------------------------------
+            // An ungraded render is the single biggest reason a correct scene
+            // still reads as a diagram: real footage is saturated, contrasty,
+            // and split warm/cool between highlight and shadow. None of that
+            // falls out of a physically correct render on its own.
+            float luma = dot( col, vec3( 0.2126, 0.7152, 0.0722 ) );
+            col = mix( vec3( luma ), col, uSat );
+            // pivot on where ACES actually lands the midtones, not on 0.5
+            col = ( col - 0.435 ) * uContrast + 0.435;
+            // cool the shadows, warm the highlights
+            float sw = 1.0 - smoothstep( 0.0, 0.55, luma );
+            float hw = smoothstep( 0.42, 1.0, luma );
+            col *= mix( vec3( 1.0 ), uShadowTint, sw * uGradeMix );
+            col *= mix( vec3( 1.0 ), uHighTint,   hw * uGradeMix );
+            col = max( col, vec3( 0.0 ) );
+
             // vignette, moved out of the CSS layer so it composites correctly
             col *= 1.0 - uVignette * smoothstep( 0.10, 0.72, r2 );
             float g = h21( vUv * 1024.0 + uTime ) - 0.5;

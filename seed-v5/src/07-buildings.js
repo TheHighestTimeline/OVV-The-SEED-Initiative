@@ -13,7 +13,7 @@
 import * as THREE from 'three';
 import { ELEV, LAYER, clamp, lerp, stream, DEG } from './00-config.js';
 import { groundH, padLevel } from './01-terrain.js';
-import { MAT, variant } from './03-materials.js';
+import { MAT, WALL_PALETTE, variant } from './03-materials.js';
 import { mesh, box, cyl, decal, instanced, mergeGeometries } from './geom.js';
 
 const rnd = stream('buildings');
@@ -76,7 +76,13 @@ export function buildBuilding(spec) {
   g.name = 'bld-' + id;
   const pad = padLevel(x, z, w + 2.4, d + 2.4, rot, 5);
   const base = pad.mean;
-  const wallMat = MAT[wall] || MAT.panelWall;
+  /* A building that names no wall draws one from the palette, chosen by its
+     own dedicated stream — not the 'bld-' stream below, which would shift
+     every other random choice this building makes and move geometry. */
+  const wallName = (wall && wall !== 'panelWall')
+    ? wall
+    : WALL_PALETTE[stream('wall-' + id).int(0, WALL_PALETTE.length - 1)];
+  const wallMat = MAT[wallName] || MAT.panelWall;
   const accentMat = accent ? (MAT[accent] || MAT.precast) : MAT.precast;
   const hw = w / 2, hd = d / 2;
   const r = stream('bld-' + id);

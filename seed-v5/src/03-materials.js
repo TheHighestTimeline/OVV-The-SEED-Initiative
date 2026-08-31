@@ -872,6 +872,13 @@ function patchORM(m) {
 /* ================================================================== LIBRARY */
 export const MAT = {};
 
+/* The names buildBuilding picks from when a building does not choose its own.
+   Order is not meaningful; length is — see the note in buildMaterialLibrary. */
+export const WALL_PALETTE = [
+  'panelWall', 'panelWallW', 'panelWallD', 'precast', 'brick',
+  'wallSand', 'wallCream', 'wallWarmGy', 'wallClay', 'wallSlate',
+];
+
 export function buildMaterialLibrary(renderer, quality) {
   MAXANISO = renderer.capabilities.getMaxAnisotropy();
   const q = (typeof location !== 'undefined') ? new URLSearchParams(location.search).get('tex') : null;
@@ -909,6 +916,22 @@ export function buildMaterialLibrary(renderer, quality) {
   MAT.roofSeam   = mat('roofSeam',   () => patchORM(std('roofSeam',  0.20, 0.20, { roughness: 1, metalness: 0.62 })));
   MAT.roofMembrane = mat('roofMembrane', () => patchORM(std('concreteWalk', 0.10, 0.10, { roughness: 1, color: 0xbfc3c2 })));
   MAT.precast    = mat('precast',    () => patchORM(std('concreteCurb', 0.14, 0.14, { roughness: 1, color: 0xcfcabf })));
+
+  /* ---- wall palette ------------------------------------------------------
+     Every building that did not name a wall fell back to the single grey
+     panelWall, so a campus of 88 structures rendered as one value and read as
+     a massing diagram rather than a place. Real districts vary building to
+     building in hue, value and material age.
+
+     This is a fixed palette, not a per-building clone, on purpose: the merge
+     pass buckets by material, so 88 buildings sharing 8 materials stay 8
+     buckets where 88 unique clones would cost 88 draw calls. Variety is free
+     up to the size of this list and expensive past it. */
+  MAT.wallSand   = mat('wallSand',   () => patchORM(std('panelWall', 0.25, 0.25, { roughness: 1, metalness: 0.42, color: 0xd6c9b2 })));
+  MAT.wallCream  = mat('wallCream',  () => patchORM(std('concreteCurb', 0.16, 0.16, { roughness: 1, color: 0xe2dccb })));
+  MAT.wallWarmGy = mat('wallWarmGy', () => patchORM(std('panelWall', 0.25, 0.25, { roughness: 1, metalness: 0.5, color: 0xa9a49b })));
+  MAT.wallClay   = mat('wallClay',   () => patchORM(std('concreteCurb', 0.16, 0.16, { roughness: 1, color: 0xb08163 })));
+  MAT.wallSlate  = mat('wallSlate',  () => patchORM(std('panelWall', 0.25, 0.25, { roughness: 1, metalness: 0.55, color: 0x7b8189 })));
   MAT.brick      = mat('brick',      () => patchORM(std('paver', 0.5, 0.5, { roughness: 1, color: 0x9a5f49 })));
 
   /* --- glass. v3's glazing had no transparent flag at all — it was solid. */
