@@ -57,12 +57,25 @@ disk.
 
 ## Fetching them
 
-Once `ambientcg.com` is reachable from the build environment:
-
 ```bash
 node tools/fetch-assets.js          # all sets listed above
 node tools/fetch-assets.js asphalt  # just one
 ```
+
+Run it wherever the network allows it and commit the result. A Claude Code
+web session reaches only package registries and raw.githubusercontent.com —
+ambientcg.com returns a proxy 403 there, and that is an egress policy to
+change or work around by committing, never to tunnel through. A normal
+workstation has no such limit, so the usual path is:
+
+```bash
+cd seed-v5 && node tools/fetch-assets.js
+git add public/assets/materials && git commit -m "Add scanned material sets"
+```
+
+Roughly 15-25 MB for the full set at 2K. That is a real addition to the repo
+and the right place for it: these are inputs to the build, they change almost
+never, and a texture nobody can find again is worse than a large repo.
 
 ## A tradeoff worth knowing
 
