@@ -8,7 +8,7 @@
    ========================================================================== */
 
 import * as THREE from 'three';
-import { SITE, TIER_ORDER, TIME_STATES, clamp, lerp, smoothstep } from './00-config.js';
+import { SITE, TIER_ORDER, TIME_STATES, IS_TOUCH, clamp, lerp, smoothstep } from './00-config.js';
 import { groundH } from './01-terrain.js';
 import { CATS_ALL, SPOTS_ALL } from './17-hotspot-data.js';
 import { updateWaters } from './water.js';
@@ -184,7 +184,7 @@ export function initUI(state) {
     el.style.color = CATS[s.cat] ? CATS[s.cat].color : '#fff';
     el.innerHTML = `<span class="ring"><i></i></span><span class="lbl">${s.t}</span>`;
     el.setAttribute('aria-label', `${CATS[s.cat] ? CATS[s.cat].label : s.cat}: ${s.t}`);
-    el.onclick = (ev) => { ev.stopPropagation(); openCard(s); };
+    el.onclick = (ev) => { ev.stopPropagation(); (IS_TOUCH ? openPeek : openCard)(s); };
     pinLayer.appendChild(el);
     pins.push({ spot: s, el, pos: new THREE.Vector3(a[0], a[1], a[2]), vis: true });
   }
@@ -213,7 +213,24 @@ export function initUI(state) {
   const todoify = (t) => String(t).replace(/TODO_FACT(:[^.<]*)?/g,
     (m) => `<span class="todofact">${m}</span>`);
 
+  /* On a phone the full card covers the world you just tapped, which is the
+     opposite of what a map pin is for. Show the name in a chip at the bottom
+     instead and let the card be a second, deliberate tap. Desktop is
+     unchanged: there is room for the card there and no reason to add a step. */
+  const elPeek = document.getElementById('peek');
+  function openPeek(s) {
+    if (!elPeek) return;
+    selected = s;
+    const c = CATS[s.cat] || { label: s.cat, color: '#fff' };
+    elPeek.querySelector('.dot').style.background = c.color;
+    elPeek.querySelector('.nm').textContent = s.t;
+    elPeek.classList.add('open');
+    elPeek.onclick = () => { elPeek.classList.remove('open'); openCard(s); };
+  }
+  function closePeek() { if (elPeek) elPeek.classList.remove('open'); }
+
   function openCard(s) {
+    closePeek();
     selected = s;
     const c = CATS[s.cat] || { label: s.cat, color: '#fff' };
     elCat.innerHTML = `<span class="dot" style="width:8px;height:8px;border-radius:50%;background:${c.color};display:inline-block"></span> ${c.label}`;
@@ -328,7 +345,11 @@ export function initUI(state) {
         if (state.timeState !== leg.state) setTimeState(leg.state);
         if (t > leg.hold * 0.35 && leg.open && selected !== leg.open) {
           const s = SPOTS.find((q) => q.id === leg.open);
-          if (s && (!selected || selected.id !== s.id)) openCard(s);
+          if (s && (!selected || selected.id !== s.id)) {
+            /* The tour is the mobile experience: it must never cover the
+               thing it is flying you to. */
+            (IS_TOUCH ? openPeek : openCard)(s);
+          }
         }
         if (t > leg.hold) {
           t = 0; i++;
@@ -397,7 +418,12 @@ export function initUI(state) {
     for (const f of state.fans) f.rotation.y += f.userData.spin * dt;
 
     cam.getWorldDirection(camDir);
-    const w = window.innerWidth, h = window.innerHeight;
+    /* The canvas box, not the layout viewport. They diverge the moment a
+       browser applies its own zoom, and pins positioned against the wrong one
+       drift away from the geometry they label. */
+    const vv = window.visualViewport;
+    const w = vv ? vv.width : window.innerWidth;
+    const h = vv ? vv.height : window.innerHeight;
     const shown = [];
     for (const p of pins) {
       if (!p.vis) { p.el.style.display = 'none'; continue; }

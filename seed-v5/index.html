@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <title>SEED Initiative — Living Campus | OneVibeMediaGroup</title>
 <meta name="description" content="A real-time 3D model of the SEED Initiative Living Campus: closed-loop water, on-site generation, carbon capture, community programs, and the watershed corridor that runs from the campus to the Atlantic.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -19,7 +19,40 @@
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;padding:0;height:100%;overflow:hidden;background:var(--bg);color:var(--ink);font-family:var(--sans)}
-canvas{display:block;position:fixed;inset:0;width:100%;height:100%}
+canvas{display:block;position:fixed;inset:0;width:100%;height:100%;
+  /* Without this the browser claims every drag and pinch for panning and
+     zooming the page, so the gestures never reach the camera at all — and a
+     page-zoomed viewport also drifts the HTML pins away from the geometry
+     they point at, because they are positioned in layout pixels. */
+  touch-action:none}
+html,body{overscroll-behavior:none}
+
+/* ---- touch layout -------------------------------------------------------
+   Set from JS on <html> when the device is touch-first, so these rules
+   never catch a small desktop window. */
+html.touch #card{
+  /* Full height at the right edge is a wall on a phone: it covers the thing
+     you just tapped. Sit it at the bottom as a sheet instead, short enough
+     to leave the world visible above it. */
+  right:0;left:0;top:auto;bottom:0;width:auto;max-height:46vh;
+  transform:translateY(110%);border-radius:16px 16px 0 0}
+html.touch #card.open{transform:translateY(0)}
+html.touch #walkBtn{display:none}      /* pointer lock and WASD: desktop only */
+
+/* The name-only chip a pin shows first on touch. Tapping it opens the card. */
+#peek{position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom));
+  transform:translate(-50%,140%);z-index:40;display:flex;align-items:center;gap:9px;
+  padding:11px 16px;border-radius:999px;background:var(--panel,#12161c);
+  border:1px solid var(--line,#2a323d);color:var(--fg,#e8edf4);
+  font-size:14px;font-weight:600;letter-spacing:-.01em;max-width:min(88vw,420px);
+  box-shadow:0 8px 28px rgba(0,0,0,.45);opacity:0;pointer-events:none;
+  transition:transform .22s cubic-bezier(.2,.8,.2,1),opacity .18s}
+#peek.open{transform:translate(-50%,0);opacity:1;pointer-events:auto}
+#peek .dot{width:9px;height:9px;border-radius:50%;flex:0 0 auto}
+#peek .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#peek .more{flex:0 0 auto;font-size:11px;letter-spacing:.1em;text-transform:uppercase;
+  opacity:.6;font-weight:500}
+@media (prefers-reduced-motion:reduce){#peek{transition:none}}
 button{font-family:inherit;color:inherit;cursor:pointer}
 :focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:6px}
 
@@ -171,6 +204,7 @@ body.walking #walkhud{opacity:1}
 </head>
 <body>
 <canvas id="c"></canvas>
+<button id="peek" type="button" aria-live="polite"><span class="dot"></span><span class="nm"></span><span class="more">Details</span></button>
 
 <div id="boot" role="status" aria-live="polite">
   <div class="sub">OneVibeMediaGroup</div>

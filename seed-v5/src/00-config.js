@@ -127,6 +127,13 @@ export const LAYER = {
 Object.freeze(LAYER);
 
 /* ------------------------------------------------------------- quality tiers */
+/* Touch-first device: no hover, a finger for a cursor, and a page the browser
+   will happily pan and zoom out from under a canvas. Decided once here so the
+   renderer, the controls and the UI all agree on what device they are on. */
+export const IS_TOUCH = (typeof window !== 'undefined') &&
+  (('ontouchstart' in window) || (navigator.maxTouchPoints || 0) > 1) &&
+  !window.matchMedia('(pointer: fine)').matches;
+
 export const TIERS = {
   ultra: {
     name: 'Ultra', cascades: 4, shadowMap: 2048, ao: 'gtao', aoScale: 1.0,
@@ -147,9 +154,18 @@ export const TIERS = {
     detailNormals: false, probes: false, lightCull: 12,
   },
   mobile: {
+    /* pixelRatioCap was 1. A modern phone reports devicePixelRatio 3, so the
+       world rendered at a third of the screen's real resolution and every
+       edge in it was soft — and turning quality DOWN could never fix that,
+       because resolution was already the thing that had been cut.
+
+       2 is the right trade: sharp, and still a quarter of the pixels a 3x
+       cap would cost. Everything expensive is off instead — one shadow
+       cascade, no ambient occlusion, no post stack. Sharp and simple beats
+       soft and elaborate on a phone, every time. */
     name: 'Mobile', cascades: 1, shadowMap: 1024, ao: 'off', aoScale: 0,
     post: { bloom: false, taa: false, ssr: false, grain: false },
-    pixelRatioCap: 1, vegetation: 0.35, drawBudget: 200, waveComponents: 3,
+    pixelRatioCap: 2, vegetation: 0.35, drawBudget: 200, waveComponents: 3,
     detailNormals: false, probes: false, lightCull: 6, impostorsOnly: true,
   },
 };

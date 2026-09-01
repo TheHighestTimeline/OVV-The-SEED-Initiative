@@ -35,8 +35,13 @@ export function detectTier() {
   const coarse = typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches;
   const cores = navigator.hardwareConcurrency || 4;
   const mem = navigator.deviceMemory || 4;
-  if (coarse && cores <= 6) return 'mobile';
-  if (coarse) return 'balanced';
+  /* Any touch-first device gets the mobile tier, whatever it claims about
+     cores. A current phone reports 8 hardware threads and was landing on
+     'balanced', which runs SSAO and bloom — expensive on a thermally limited
+     GPU — while still capping resolution. Slow AND soft, the worst pair.
+     Core count describes a CPU; what decides this is the GPU, the thermal
+     envelope and the battery, and none of those are visible from here. */
+  if (coarse) return 'mobile';
   if (cores <= 4 || mem <= 4) return 'balanced';
   if (cores >= 12 && mem >= 8) return 'ultra';
   return 'high';

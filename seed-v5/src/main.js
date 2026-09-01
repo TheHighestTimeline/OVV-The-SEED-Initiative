@@ -4,7 +4,7 @@
 
 import * as THREE from 'three';
 import {
-  SITE, WORLD, VERSION, WORLD_SEED, TIER_ORDER, TIME_STATES,
+  SITE, WORLD, VERSION, WORLD_SEED, TIER_ORDER, TIME_STATES, IS_TOUCH,
   clamp, lerp, smoothstep,
 } from './00-config.js';
 import { buildTerrain, groundH, siteH } from './01-terrain.js';
@@ -70,28 +70,83 @@ class Orbit {
     this._th = this.theta; this._ph = this.phi;
     this.enabled = true;
     this._drag = null;
+    /* Live pointers by id. A mouse only ever puts one in here; a hand puts
+       two, and two is what pinch and two-finger pan are made of. */
+    this._pointers = new Map();
+    this._pinch = null;
     const el = dom;
+
+    /* Pan the camera target across the ground plane, in world units scaled by
+       how far out the camera is — the same gesture should move the view by
+       the same fraction of the screen whether you are at 20 m or 2 km. */
+    this._pan = (dx, dy) => {
+      const s = this.dist * 0.0016;
+      const fwd = new THREE.Vector3(Math.sin(this.theta), 0, Math.cos(this.theta));
+      const rgt = new THREE.Vector3(fwd.z, 0, -fwd.x);
+      this.target.addScaledVector(rgt, -dx * s).addScaledVector(fwd, -dy * s);
+    };
+
+    const spread = () => {
+      const [a, b] = [...this._pointers.values()];
+      return { d: Math.hypot(a.x - b.x, a.y - b.y),
+               x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+    };
+
     el.addEventListener('pointerdown', (e) => {
       if (!this.enabled) return;
       el.setPointerCapture(e.pointerId);
-      this._drag = { x: e.clientX, y: e.clientY, b: e.button, shift: e.shiftKey };
+      this._pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (this._pointers.size === 2) {
+        this._pinch = spread();          /* second finger down: pinch begins */
+        this._drag = null;
+      } else if (this._pointers.size === 1) {
+        this._drag = { x: e.clientX, y: e.clientY, b: e.button, shift: e.shiftKey };
+      }
     });
+
     el.addEventListener('pointermove', (e) => {
-      if (!this._drag) return;
+      if (!this._pointers.has(e.pointerId)) return;
+      this._pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+      /* two fingers: pinch to dolly, and drag the midpoint to pan. Both at
+         once, because that is how every map app behaves and a hand does not
+         separate the two cleanly anyway. */
+      if (this._pointers.size === 2 && this._pinch) {
+        const now = spread();
+        if (this._pinch.d > 0 && now.d > 0) {
+          this.dist = clamp(this.dist * (this._pinch.d / now.d), this.minDist, this.maxDist);
+        }
+        this._pan(now.x - this._pinch.x, now.y - this._pinch.y);
+        this._pinch = now;
+        this.clampTarget();
+        return;
+      }
+
+      if (!this._drag || this._pointers.size !== 1) return;
       const dx = e.clientX - this._drag.x, dy = e.clientY - this._drag.y;
       this._drag.x = e.clientX; this._drag.y = e.clientY;
       if (this._drag.b === 2 || this._drag.shift) {
-        const s = this.dist * 0.0016;
-        const fwd = new THREE.Vector3(Math.sin(this.theta), 0, Math.cos(this.theta));
-        const rgt = new THREE.Vector3(fwd.z, 0, -fwd.x);
-        this.target.addScaledVector(rgt, -dx * s).addScaledVector(fwd, -dy * s);
+        this._pan(dx, dy);
       } else {
         this.theta -= dx * 0.0042;
         this.phi = clamp(this.phi - dy * 0.0034, this.minPhi, this.maxPhi);
       }
       this.clampTarget();
     });
-    const up = (e) => { if (this._drag) { try { el.releasePointerCapture(e.pointerId); } catch (q) {} } this._drag = null; };
+
+    const up = (e) => {
+      this._pointers.delete(e.pointerId);
+      try { el.releasePointerCapture(e.pointerId); } catch (q) { /* already gone */ }
+      if (this._pointers.size < 2) this._pinch = null;
+      /* Lifting one of two fingers must not snap the view: restart the
+         one-finger drag from where the remaining finger actually is. */
+      if (this._pointers.size === 1) {
+        const [only] = [...this._pointers.values()];
+        this._drag = { x: only.x, y: only.y, b: 0, shift: false };
+      } else if (this._pointers.size === 0) {
+        this._drag = null;
+      }
+    };
     el.addEventListener('pointerup', up);
     el.addEventListener('pointercancel', up);
     el.addEventListener('contextmenu', (e) => e.preventDefault());
@@ -168,7 +223,14 @@ class Orbit {
 }
 
 /* ------------------------------------------------------------------- boot */
+/* Marks the document so CSS can lay out for a finger instead of a cursor.
+   Done before the first frame so nothing reflows once the world appears. */
+function markTouch() {
+  if (IS_TOUCH) document.documentElement.classList.add('touch');
+}
+
 async function main() {
+  markTouch();
   const canvas = document.getElementById('c');
   await progress('detecting hardware');
   const tier = qs.get('tier') || detectTier();
