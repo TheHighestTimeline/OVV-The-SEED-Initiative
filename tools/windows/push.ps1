@@ -36,6 +36,21 @@ $here = Split-Path -Parent $MyInvocation.MyCommand.Path
 $drop = Join-Path $here 'drop'
 $repo = Join-Path $here 'repo'
 
+# Extra folders to read, one absolute path per line, in sources.txt next to
+# this script. Keeps someone from having to copy downloads into `drop` every
+# time when their assets already live somewhere else. Blank lines and lines
+# starting with # are ignored.
+$sourcesFile = Join-Path $here 'sources.txt'
+$scanDirs = @($drop)
+if (Test-Path $sourcesFile) {
+  foreach ($line in Get-Content $sourcesFile) {
+    $t = $line.Trim()
+    if (-not $t -or $t.StartsWith('#')) { continue }
+    if (Test-Path $t) { $scanDirs += $t }
+    else { Write-Host "  sources.txt: no such folder, skipping - $t" -ForegroundColor Yellow }
+  }
+}
+
 if (-not (Get-Command git -ErrorAction SilentlyContinue)) {
   Write-Host ''
   Write-Host 'Git is not installed.' -ForegroundColor Red
@@ -105,7 +120,8 @@ function Save-Resized($srcPath, $destPath) {
 # ------------------------------------------------------------------- unzip
 # Download sites hand you a zip; expecting someone to unpack ten of them by
 # hand is how this step gets skipped. Unpack anything we find, in place.
-$zips = Get-ChildItem $drop -Recurse -File | Where-Object { $_.Extension -eq '.zip' }
+$zips = Get-ChildItem $scanDirs -Recurse -File -ErrorAction SilentlyContinue |
+        Where-Object { $_.Extension -eq '.zip' }
 foreach ($z in $zips) {
   $target = Join-Path $z.DirectoryName $z.BaseName
   if (-not (Test-Path $target)) {
@@ -116,7 +132,7 @@ foreach ($z in $zips) {
 }
 
 # ------------------------------------------------------------- the textures
-$textures = Get-ChildItem $drop -Recurse -File | Where-Object {
+$textures = Get-ChildItem $scanDirs -Recurse -File -ErrorAction SilentlyContinue | Where-Object {
   $_.Extension -match '^\.(jpg|jpeg|png)$' -and
   $_.BaseName -match '_(Color|NormalGL|NormalDX|Roughness|AmbientOcclusion)$'
 }
@@ -148,7 +164,8 @@ foreach ($f in $textures) {
 }
 
 # --------------------------------------------------------------- the models
-$models = Get-ChildItem $drop -Recurse -File | Where-Object { $_.Extension -match '^\.(glb|gltf)$' }
+$models = Get-ChildItem $scanDirs -Recurse -File -ErrorAction SilentlyContinue |
+          Where-Object { $_.Extension -match '^\.(glb|gltf)$' }
 foreach ($m in $models) {
   Copy-Item $m.FullName (Join-Path $mdlDir $m.Name) -Force
   Write-Host ("  model             {0}  ({1:N1} MB)" -f $m.Name, ($m.Length / 1MB))
@@ -158,8 +175,8 @@ foreach ($m in $models) {
 if ($count -eq 0) {
   Write-Host ''
   Write-Host 'Nothing found in the drop folder.' -ForegroundColor Yellow
-  Write-Host "Put texture zips, loose maps, or .glb models in:"
-  Write-Host "  $drop"
+  Write-Host 'Searched:'
+  foreach ($d in $scanDirs) { Write-Host "  $d" }
   Write-Host ''
   Read-Host 'Press Enter to close'; exit 0
 }
