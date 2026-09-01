@@ -164,12 +164,43 @@ foreach ($f in $textures) {
 }
 
 # --------------------------------------------------------------- the models
+# A .glb carries its textures inside it, so it travels as one file. A .obj or
+# .fbx does not: it points at a .mtl and a pile of image files beside it, and
+# separating them from their folder breaks the model. So GLB copies as a file
+# and everything else copies as its whole directory.
 $models = Get-ChildItem $scanDirs -Recurse -File -ErrorAction SilentlyContinue |
           Where-Object { $_.Extension -match '^\.(glb|gltf)$' }
 foreach ($m in $models) {
   Copy-Item $m.FullName (Join-Path $mdlDir $m.Name) -Force
-  Write-Host ("  model             {0}  ({1:N1} MB)" -f $m.Name, ($m.Length / 1MB))
+  Write-Host ("  model    {0,-42} {1,6:N1} MB" -f $m.Name, ($m.Length / 1MB))
+  if ($m.Length -gt 40MB) {
+    Write-Host "           ^ heavy for a browser; Claude will decimate it" -ForegroundColor Yellow
+  }
   $count++
+}
+
+$otherModels = Get-ChildItem $scanDirs -Recurse -File -ErrorAction SilentlyContinue |
+               Where-Object { $_.Extension -match '^\.(obj|fbx)$' }
+$copiedDirs = @{}
+foreach ($m in $otherModels) {
+  $srcDir = $m.DirectoryName
+  if ($copiedDirs.ContainsKey($srcDir)) { continue }
+  $copiedDirs[$srcDir] = $true
+
+  # never drag a whole download folder in wholesale: skip the formats we
+  # cannot use, which is most of what these packs ship
+  $keep = Get-ChildItem $srcDir -File | Where-Object {
+    $_.Extension -match '^\.(obj|fbx|mtl|jpg|jpeg|png|tga|bmp)$'
+  }
+  if (-not $keep) { continue }
+
+  $destDir = Join-Path $mdlDir (Split-Path $srcDir -Leaf)
+  New-Item -ItemType Directory -Force -Path $destDir | Out-Null
+  $mb = 0
+  foreach ($k in $keep) { Copy-Item $k.FullName $destDir -Force; $mb += $k.Length / 1MB }
+  Write-Host ("  model    {0,-42} {1,6:N1} MB  ({2} files)" -f
+              (Split-Path $srcDir -Leaf), $mb, $keep.Count)
+  $count += $keep.Count
 }
 
 if ($count -eq 0) {
