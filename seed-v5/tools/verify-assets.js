@@ -19,9 +19,22 @@ if (!fs.existsSync(file)) { console.error('no build; run node tools/build.js'); 
 /* http, not file:// — the ORM packer draws each texture into a canvas, and a
    canvas that has drawn a file:// image is tainted, so getImageData throws and
    every scanned set silently falls back. */
+/* Content-Type matters here: fetch() returns bytes regardless, but an <img>
+   will not decode a response the browser cannot type, so a server that omits
+   it makes every texture look absent while the file is plainly reachable. */
+const MIME = {
+  '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css',
+  '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.png': 'image/png',
+  '.glb': 'model/gltf-binary', '.gltf': 'model/gltf+json',
+};
 const server = http.createServer((req, res) => {
   const rel = decodeURIComponent(req.url.split('?')[0]).replace(/^\/+/, '');
-  fs.readFile(path.join(root, 'dist', rel), (e, b) => (e ? res.writeHead(404).end() : res.end(b)));
+  fs.readFile(path.join(root, 'dist', rel), (e, b) => {
+    if (e) { res.writeHead(404).end(); return; }
+    res.writeHead(200, {
+      'Content-Type': MIME[path.extname(rel).toLowerCase()] || 'application/octet-stream',
+    }).end(b);
+  });
 });
 await new Promise((r) => server.listen(0, '127.0.0.1', r));
 
