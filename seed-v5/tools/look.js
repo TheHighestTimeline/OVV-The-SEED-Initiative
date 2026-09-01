@@ -27,7 +27,14 @@ const candidates = [
 
 /* Eye-level and low-oblique framings, chosen to hold sky, ground plane and a
    built edge in the same frame — the composition every reference image uses. */
+/* Framings taken from where the world actually put things — see tools/where.js.
+   The coordinates below are real bench and bin positions in the community
+   plaza, not positions that seemed likely. */
 const FRAMES = [
+  { n: 'plaza-bench',  time: 'afternoon', goto: [15.4, 335.4, 14, -2.35, 1.34] },
+  { n: 'plaza-bin',    time: 'afternoon', goto: [-20.5, 278.6, 16, -0.9, 1.32] },
+  { n: 'plaza-walk',   time: 'afternoon', walk: [24, 340, Math.PI * 1.22] },
+  { n: 'plaza-night',  time: 'night',     goto: [15.4, 335.4, 18, -2.35, 1.30] },
   { n: 'street-arterial', time: 'afternoon', walk: [0, -40, Math.PI * 0.5] },
   { n: 'street-plaza',    time: 'afternoon', walk: [40, 250, Math.PI * 1.15] },
   { n: 'street-campus',   time: 'afternoon', walk: [-150, -120, Math.PI * 0.25] },
