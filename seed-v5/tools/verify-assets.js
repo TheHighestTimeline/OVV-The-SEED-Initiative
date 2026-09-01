@@ -77,7 +77,7 @@ const r = await page.evaluate(async () => {
   } catch (e) { probe = 'threw: ' + e.message; }
   return {
     materials: window.__seedMaterials(), models: window.__seedModels(),
-    stats: window.__seedStats(), probe,
+    stats: window.__seedStats(), probe, heavy: window.__seedHeavy(14),
   };
 });
 
@@ -99,6 +99,9 @@ if (r.models.triangles) {
   const top = Object.entries(r.models.triangles).sort((a, b) => b[1] - a[1]).slice(0, 4);
   console.log('heaviest models: ' + top.map(([k, v]) => `${k} ${v.toLocaleString()}`).join(', '));
 }
+console.log(`\nscene triangles ${r.heavy.total.toLocaleString()}`);
+r.heavy.top.forEach((t) => console.log(
+  `  ${String(t.tris).padStart(12)}  ${String(t.instances).padStart(6)}x${String(t.per).padStart(8)}  ${t.name}`));
 console.log(`draws ${r.stats.calls}  tris ${r.stats.tris}  textures ${r.stats.textures}`);
 if (errs.length) { console.log('\npage errors:'); errs.forEach((e) => console.log('  ' + e)); }
 

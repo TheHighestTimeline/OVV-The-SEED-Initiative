@@ -511,6 +511,26 @@ async function main() {
     if (!fpAudit.length && !geoAudit.length) console.info('[audit] clean in ' + state.report.auditMs + ' ms');
   }, 60);
 
+  /* Triangle census. renderer.info reports the whole frame across every pass,
+     which says the world is heavy without saying what in it is heavy. This
+     walks the graph and attributes scene triangles to objects, counting an
+     InstancedMesh once per instance because that is what it costs. */
+  window.__seedHeavy = (limit) => {
+    const rows = [];
+    let total = 0;
+    pipe.scene.traverse((o) => {
+      if (!o.isMesh || !o.geometry) return;
+      const g = o.geometry;
+      const per = (g.index ? g.index.count : g.attributes.position.count) / 3;
+      const n = o.isInstancedMesh ? o.count : 1;
+      const tris = per * n;
+      total += tris;
+      rows.push({ name: o.name || o.type, tris: Math.round(tris),
+                  per: Math.round(per), instances: n });
+    });
+    rows.sort((a, b) => b.tris - a.tris);
+    return { total: Math.round(total), top: rows.slice(0, limit || 20) };
+  };
   window.__seedMaterials = () => scannedReport();
   window.__seedModels = () => modelReport();
   window.__seedReady = true;
