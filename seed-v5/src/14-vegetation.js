@@ -7,7 +7,7 @@
    ========================================================================== */
 
 import * as THREE from 'three';
-import { hasModel, instanceModel, instanceBudget, CATALOG } from './models.js';
+import { hasModel, instanceModel, instanceBudget, modelTriangles, CATALOG } from './models.js';
 import { SITE, LAYER, DEG, clamp, lerp, smoothstep, stream } from './00-config.js';
 import { groundH, siteH, perimU, slopeAt, waterY, PONDS } from './01-terrain.js';
 import { MAT } from './03-materials.js';
@@ -21,10 +21,18 @@ export const WIND = { value: 0 };
 /* the stated native list (c4), plus the coastal species */
 const MODEL_TREE_H = CATALOG.tree.size;
 
-/* Triangles the real tree mesh may spend across the whole world. The budget
-   for everything else is roughly 20 million, so this is a visible slice for
-   the trees the walker actually stands next to. */
-const MODEL_TREE_BUDGET = 3.0e6;
+/* Triangles the real tree mesh may spend across the WHOLE world — every
+   species together, not each. Everything else in this world (terrain, 88
+   buildings, the roads, 798 street lights, the town) comes to under 3 million
+   scene triangles, and renderer.info reports roughly 6.5x the scene once the
+   three shadow cascades and the AO prepass have each walked it. So 2.5 million
+   here lands the frame near 35 million, inside a 40 million budget.
+
+   This was per-species once. instanceBudget() returned 54 trees, the loop
+   below ran it for each of seven species, and a "3 million" budget spent 21 —
+   which is what a budget applied inside the loop it is meant to bound will
+   always do. */
+const MODEL_TREE_BUDGET = 2.5e6;
 
 export const SPECIES = {
   loblolly:  { bark: 'barkPine',  fol: 'folPine',     h: [17, 30], trunk: 0.30, canopy: 4.6, form: 'conifer' },
@@ -315,6 +323,9 @@ export function buildVegetation(world) {
 
   /* --- build the instanced meshes */
   let count = 0;
+  /* Spent across every species, decremented as trees are allocated. The
+     species loop must not each get the whole budget. */
+  let modelTreeBudget = MODEL_TREE_BUDGET;
   for (const key of Object.keys(SPECIES)) {
     const list = accepted[key];
     if (!list || !list.length) continue;
@@ -336,8 +347,9 @@ export function buildVegetation(world) {
            to 354 million and no browser survives that. Spend a fixed budget on
            the closest trees and let the rest keep the billboard form, which is
            what the LOD system is for. */
-        const cap = Math.min(sub.length, instanceBudget('tree', MODEL_TREE_BUDGET));
+        const cap = Math.min(sub.length, instanceBudget('tree', modelTreeBudget));
         if (cap > 0) {
+          modelTreeBudget -= cap * (modelTriangles('tree') || 0);
           const tr0 = sub.slice(0, cap).map((t) => ({
             x: t.x, y: t.y, z: t.z, rotY: t.ry, scale: t.s / MODEL_TREE_H,
           }));

@@ -56,6 +56,12 @@ export function modelReport() {
   };
 }
 
+/* Triangles one copy of this model costs, or 0 when it is absent. */
+export function modelTriangles(name) {
+  const m = loaded.get(name);
+  return m ? m.triangles : 0;
+}
+
 /* How many copies of this model fit in a triangle budget. Returns 0 when the
    model is absent, so a caller can use the answer directly as a count. */
 export function instanceBudget(name, triangleBudget) {
