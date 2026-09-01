@@ -50,7 +50,18 @@ let basePath = 'assets/models/';
 export function hasModel(name) { return loaded.has(name); }
 export function getModel(name) { return loaded.get(name) || null; }
 export function modelReport() {
-  return { loaded: [...loaded.keys()], missing, expected: Object.keys(CATALOG) };
+  return {
+    loaded: [...loaded.keys()], missing, expected: Object.keys(CATALOG),
+    triangles: Object.fromEntries([...loaded].map(([k, v]) => [k, v.triangles])),
+  };
+}
+
+/* How many copies of this model fit in a triangle budget. Returns 0 when the
+   model is absent, so a caller can use the answer directly as a count. */
+export function instanceBudget(name, triangleBudget) {
+  const m = loaded.get(name);
+  if (!m || !m.triangles) return 0;
+  return Math.max(0, Math.floor(triangleBudget / m.triangles));
 }
 
 /* Scale so the named axis measures exactly `size`, then sit the model on y=0.
@@ -108,7 +119,15 @@ export async function loadModels(opts) {
           const root = normalize(gltf.scene, entry);
           const parts = flatten(root);
           if (!parts.length) { missing.push(name + ' (no meshes)'); resolve(); return; }
-          loaded.set(name, { parts, entry });
+          /* Triangle cost per instance. A photoscanned model can be six
+             figures of triangles, which is fine once and ruinous a thousand
+             times — callers that repeat a model need this to budget. */
+          let tris = 0;
+          for (const p of parts) {
+            const g = p.geometry;
+            tris += (g.index ? g.index.count : g.attributes.position.count) / 3;
+          }
+          loaded.set(name, { parts, entry, triangles: Math.round(tris) });
         } catch (e) {
           missing.push(`${name} (${e.message})`);
         }

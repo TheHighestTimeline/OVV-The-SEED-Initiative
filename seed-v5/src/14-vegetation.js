@@ -7,7 +7,7 @@
    ========================================================================== */
 
 import * as THREE from 'three';
-import { hasModel, instanceModel, CATALOG } from './models.js';
+import { hasModel, instanceModel, instanceBudget, CATALOG } from './models.js';
 import { SITE, LAYER, DEG, clamp, lerp, smoothstep, stream } from './00-config.js';
 import { groundH, siteH, perimU, slopeAt, waterY, PONDS } from './01-terrain.js';
 import { MAT } from './03-materials.js';
@@ -20,6 +20,11 @@ export const WIND = { value: 0 };
 
 /* the stated native list (c4), plus the coastal species */
 const MODEL_TREE_H = CATALOG.tree.size;
+
+/* Triangles the real tree mesh may spend across the whole world. The budget
+   for everything else is roughly 20 million, so this is a visible slice for
+   the trees the walker actually stands next to. */
+const MODEL_TREE_BUDGET = 3.0e6;
 
 export const SPECIES = {
   loblolly:  { bark: 'barkPine',  fol: 'folPine',     h: [17, 30], trunk: 0.30, canopy: 4.6, form: 'conifer' },
@@ -324,22 +329,32 @@ export function buildVegetation(world) {
          eye level it is the single most obviously fake thing in the world.
          t.s is the tree's height in metres, and the model was normalised to
          CATALOG.tree.size, so the ratio is the instance scale. */
+      let sub2 = sub;
       if (lod === 0 && hasModel('tree') && sp.form !== 'conifer') {
-        const tr0 = sub.map((t) => ({
-          x: t.x, y: t.y, z: t.z, rotY: t.ry, scale: t.s / MODEL_TREE_H,
-        }));
-        const meshes = instanceModel('tree', tr0);
-        for (const m of meshes) {
-          m.name = `veg-model-${key}`;
-          m.userData.seedId = 'vegetation';
-          g.add(m);
+        /* Budgeted, not unconditional. A photoscanned tree runs six figures of
+           triangles; swapping every near tree for one took the world from 21
+           to 354 million and no browser survives that. Spend a fixed budget on
+           the closest trees and let the rest keep the billboard form, which is
+           what the LOD system is for. */
+        const cap = Math.min(sub.length, instanceBudget('tree', MODEL_TREE_BUDGET));
+        if (cap > 0) {
+          const tr0 = sub.slice(0, cap).map((t) => ({
+            x: t.x, y: t.y, z: t.z, rotY: t.ry, scale: t.s / MODEL_TREE_H,
+          }));
+          for (const m of instanceModel('tree', tr0)) {
+            m.name = `veg-model-${key}`;
+            m.userData.seedId = 'vegetation';
+            g.add(m);
+          }
+          count += cap;
+          sub2 = sub.slice(cap);
+          if (!sub2.length) continue;
         }
-        if (meshes.length) { count += sub.length; continue; }
       }
 
       const geo = treeGeometry(sp, lod);
-      const tr = sub.map((t) => ({ x: t.x, y: t.y, z: t.z, ry: t.ry, rz: t.rz,
-                                   sx: t.s, sy: t.s, sz: t.s }));
+      const tr = sub2.map((t) => ({ x: t.x, y: t.y, z: t.z, ry: t.ry, rz: t.rz,
+                                    sx: t.s, sy: t.s, sz: t.s }));
       const trunk = instanced(geo.trunk, MAT[sp.bark], tr, { cast: true, receive: true });
       trunk.name = `veg-trunk-${key}-${lod}`;
       trunk.userData.seedId = 'vegetation';
@@ -350,7 +365,7 @@ export function buildVegetation(world) {
         fol.customDepthMaterial = MAT[sp.fol].userData.depthMaterial;
       }
       g.add(trunk, fol);
-      count += sub.length;
+      count += sub2.length;
     }
   }
 

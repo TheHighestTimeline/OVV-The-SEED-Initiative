@@ -37,9 +37,19 @@ page.on('pageerror', (e) => errs.push(e.message));
 await page.goto(`http://127.0.0.1:${server.address().port}/${path.basename(file)}`);
 await page.waitForFunction(() => window.__seedReady === true, { timeout: 300000 });
 
-const r = await page.evaluate(() => ({
-  materials: window.__seedMaterials(), models: window.__seedModels(), stats: window.__seedStats(),
-}));
+const r = await page.evaluate(async () => {
+  /* Fetch one texture the way the loader would reach it, so a 0/N result
+     separates "never looked" from "looked and got a 404". */
+  let probe;
+  try {
+    const res = await fetch('assets/materials/asphalt/color.jpg');
+    probe = `${res.status} ${res.headers.get('content-type')} ${res.url}`;
+  } catch (e) { probe = 'threw: ' + e.message; }
+  return {
+    materials: window.__seedMaterials(), models: window.__seedModels(),
+    stats: window.__seedStats(), probe,
+  };
+});
 
 const line = (label, got, want) =>
   console.log(`${label.padEnd(12)} ${String(got.length).padStart(2)}/${want.length}  ${got.join(', ') || '-'}`);
@@ -50,7 +60,8 @@ const matMissing = r.materials.expected.filter((m) => !r.materials.loaded.includ
 if (matMissing.length) console.log(`${''.padEnd(12)} absent: ${matMissing.join(', ')}`);
 line('models', r.models.loaded, r.models.expected);
 if (r.models.missing.length) console.log(`${''.padEnd(12)} absent: ${r.models.missing.join(', ')}`);
-console.log(`\ndraws ${r.stats.calls}  tris ${r.stats.tris}  textures ${r.stats.textures}`);
+console.log(`\nattempted ${r.materials.attempted}  probe: ${r.probe}`);
+console.log(`draws ${r.stats.calls}  tris ${r.stats.tris}  textures ${r.stats.textures}`);
 if (errs.length) { console.log('\npage errors:'); errs.forEach((e) => console.log('  ' + e)); }
 
 await browser.close();
