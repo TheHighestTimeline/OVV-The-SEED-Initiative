@@ -95,6 +95,10 @@ if (r.materials.failures && r.materials.failures.length) {
 line('models', r.models.loaded, r.models.expected);
 if (r.models.missing.length) console.log(`${''.padEnd(12)} absent: ${r.models.missing.join(', ')}`);
 console.log(`\nattempted ${r.materials.attempted}  probe: ${r.probe}`);
+if (r.models.sizes) {
+  console.log('\nmodel sizes after normalisation (metres, x/y/z):');
+  Object.entries(r.models.sizes).forEach(([k, v]) => console.log(`  ${k.padEnd(14)}${v}`));
+}
 if (r.models.triangles) {
   const top = Object.entries(r.models.triangles).sort((a, b) => b[1] - a[1]).slice(0, 4);
   console.log('heaviest models: ' + top.map(([k, v]) => `${k} ${v.toLocaleString()}`).join(', '));

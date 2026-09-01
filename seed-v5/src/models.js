@@ -53,6 +53,7 @@ export function modelReport() {
   return {
     loaded: [...loaded.keys()], missing, expected: Object.keys(CATALOG),
     triangles: Object.fromEntries([...loaded].map(([k, v]) => [k, v.triangles])),
+    sizes: Object.fromEntries([...loaded].map(([k, v]) => [k, v.size])),
   };
 }
 
@@ -91,6 +92,14 @@ function normalize(obj, entry) {
   obj.position.z -= c.z;
   obj.position.y -= box2.min.y;                /* stand it on the ground */
   obj.updateMatrixWorld(true);
+
+  /* Record what normalisation actually produced. Measuring this from the
+     scene later is impossible: the optimisation pass merges by material and
+     dissolves the per-object children, so a placed prop reports a zero-sized
+     bounding box whether it is correct, wrong, or absent. */
+  const fin = new THREE.Vector3();
+  new THREE.Box3().setFromObject(obj).getSize(fin);
+  obj.userData.normalizedSize = fin.clone();
   return obj;
 }
 
@@ -133,7 +142,11 @@ export async function loadModels(opts) {
             const g = p.geometry;
             tris += (g.index ? g.index.count : g.attributes.position.count) / 3;
           }
-          loaded.set(name, { parts, entry, triangles: Math.round(tris) });
+          const d = root.userData.normalizedSize || new THREE.Vector3();
+          loaded.set(name, {
+            parts, entry, triangles: Math.round(tris),
+            size: `${d.x.toFixed(2)} x ${d.y.toFixed(2)} x ${d.z.toFixed(2)}`,
+          });
         } catch (e) {
           missing.push(`${name} (${e.message})`);
         }
