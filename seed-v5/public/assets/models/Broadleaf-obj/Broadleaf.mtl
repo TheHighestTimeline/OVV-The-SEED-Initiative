@@ -1,0 +1,82 @@
+# 3ds Max Wavefront OBJ Exporter v0.97b - (c)2007 guruware
+# File Created: 20.09.2020 12:47:22
+
+newmtl Leaf_Mat
+	Ns 50.000000
+	Ni 1.500000
+	d 1.000000
+	Tr 0.000000
+	Tf 1.000000 1.000000 1.000000 
+	illum 2
+	Ka 0.588000 0.588000 0.588000
+	Kd 0.588000 0.588000 0.588000
+	Ks 0.495000 0.495000 0.495000
+	Ke 0.000000 0.000000 0.000000
+	map_Ka map\Leaf.jpg
+	map_Kd map\Leaf.jpg
+	map_d map\Leaf_Opacity.jpg
+	map_bump -bm 0.300000 map\Normal_Bump_Normal Bump.tga
+
+newmtl BroadleafBark_Mat
+	Ns 35.000000
+	Ni 1.500000
+	d 1.000000
+	Tr 0.000000
+	Tf 1.000000 1.000000 1.000000 
+	illum 2
+	Ka 0.588000 0.588000 0.588000
+	Kd 0.588000 0.588000 0.588000
+	Ks 0.373500 0.373500 0.373500
+	Ke 0.000000 0.000000 0.000000
+	map_Ka map\BroadleafBark.jpg
+	map_Kd map\BroadleafBark.jpg
+	map_d map\BroadleafBark_Opacity.jpg
+	map_bump -bm 0.300000 map\Normal_Bump_Normal Bump.tga
+
+newmtl Cap_01_Mat
+	Ns 30.000002
+	Ni 1.500000
+	d 1.000000
+	Tr 0.000000
+	Tf 1.000000 1.000000 1.000000 
+	illum 2
+	Ka 0.588000 0.588000 0.588000
+	Kd 0.588000 0.588000 0.588000
+	Ks 0.333000 0.333000 0.333000
+	Ke 0.000000 0.000000 0.000000
+	map_Ka map\Cap_01.jpg
+	map_Kd map\Cap_01.jpg
+	map_d map\Cap_01_Opacity.jpg
+	map_bump -bm 0.300000 map\Normal_Bump_Normal Bump.tga
+
+newmtl Rocks_01_Mat
+	Ns 30.000002
+	Ni 1.500000
+	d 1.000000
+	Tr 0.000000
+	Tf 1.000000 1.000000 1.000000 
+	illum 2
+	Ka 0.588000 0.588000 0.588000
+	Kd 0.588000 0.588000 0.588000
+	Ks 0.333000 0.333000 0.333000
+	Ke 0.000000 0.000000 0.000000
+	map_Ka map\Rocks_01.jpg
+	map_Kd map\Rocks_01.jpg
+	map_d map\Rocks_01_Opacity.jpg
+	map_bump -bm 0.300000 map\Normal_Bump_Normal Bump.tga
+
+newmtl Leaf2_Mat
+	Ns 39.999996
+	Ni 1.500000
+	d 1.000000
+	Tr 0.000000
+	Tf 1.000000 1.000000 1.000000 
+	illum 2
+	Ka 0.588000 0.588000 0.588000
+	Kd 0.588000 0.588000 0.588000
+	Ks 0.414000 0.414000 0.414000
+	Ke 0.000000 0.000000 0.000000
+	map_Ka map\Leaf2.jpg
+	map_Kd map\Leaf2.jpg
+	map_d map\Leaf2_Opacity.jpg
+	map_bump -bm 0.300000 map\Normal_Bump_Normal Bump.tga
