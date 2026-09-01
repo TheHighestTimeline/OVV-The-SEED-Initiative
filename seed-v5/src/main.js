@@ -531,6 +531,19 @@ async function main() {
     rows.sort((a, b) => b.tris - a.tris);
     return { total: Math.round(total), top: rows.slice(0, limit || 20) };
   };
+  /* Where a named thing actually is. Every framing this session was a
+     coordinate picked blind, and the shot that was meant to prove the props
+     had not one of them in it. Ask the scene instead. */
+  window.__seedFind = (needle, limit) => {
+    const hits = [];
+    const v = new THREE.Vector3();
+    pipe.scene.traverse((o) => {
+      if (!o.name || !o.name.toLowerCase().includes(needle.toLowerCase())) return;
+      o.getWorldPosition(v);
+      hits.push({ name: o.name, x: +v.x.toFixed(1), y: +v.y.toFixed(1), z: +v.z.toFixed(1) });
+    });
+    return hits.slice(0, limit || 10);
+  };
   window.__seedMaterials = () => scannedReport();
   window.__seedModels = () => modelReport();
   window.__seedReady = true;
