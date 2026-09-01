@@ -13,7 +13,9 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const file = path.join(root, 'dist', 'OVMG_SEED_CityWorld_20260823_v5.html');
+const dev = process.argv.includes('--dev');
+const file = path.join(root, 'dist',
+  `OVMG_SEED_CityWorld_20260823_v5${dev ? '_dev' : ''}.html`);
 if (!fs.existsSync(file)) { console.error('no build; run node tools/build.js'); process.exit(1); }
 
 /* http, not file:// — the ORM packer draws each texture into a canvas, and a
@@ -48,7 +50,22 @@ const page = await browser.newPage();
 const errs = [];
 page.on('pageerror', (e) => errs.push(e.message));
 await page.goto(`http://127.0.0.1:${server.address().port}/${path.basename(file)}`);
-await page.waitForFunction(() => window.__seedReady === true, { timeout: 300000 });
+/* Poll rather than waitForFunction: the world takes minutes to build under
+   software rendering, and a page error means it will never be ready at all,
+   so waiting the full deadline for one is wasted time. */
+const deadline = Date.now() + 15 * 60 * 1000;
+for (;;) {
+  const state = await page.evaluate(
+    () => ({ ready: window.__seedReady === true, err: window.__seedError || null }));
+  if (state.ready) break;
+  if (state.err) { console.error('world failed to build:\n' + state.err); break; }
+  if (errs.length) { console.error('page error:\n  ' + errs.join('\n  ')); break; }
+  if (Date.now() > deadline) { console.error('timed out after 15 min'); break; }
+  await new Promise((r) => setTimeout(r, 3000));
+}
+if (!(await page.evaluate(() => window.__seedReady === true))) {
+  await browser.close(); server.close(); process.exit(1);
+}
 
 const r = await page.evaluate(async () => {
   /* Fetch one texture the way the loader would reach it, so a 0/N result

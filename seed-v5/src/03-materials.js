@@ -1153,11 +1153,44 @@ export function disposeMaterials() {
 const BIOME_SURFACES = ['grass', 'meadow', 'sand', 'wetSand', 'gravel', 'soil'];
 const BIOME_SCALE   = [0.42, 0.36, 0.55, 0.55, 0.62, 0.48];   /* tiles per metre */
 
+/* Pixels from either kind of texture, at exactly `size`. A generated surface
+   is a DataTexture and hands its array straight over. A scanned one is backed
+   by an image or a canvas, which carries no .image.data at all — reading
+   .data off one is how a gravel scan took the whole terrain build down with
+   "Cannot convert undefined or null to object". */
+function pixelsAt(tex, size) {
+  const img = tex && tex.image;
+  if (!img) return null;
+  if (img.data && img.width === size && img.height === size) return img.data;
+
+  const c = document.createElement('canvas');
+  c.width = c.height = size;
+  const ctx = c.getContext('2d', { willReadFrequently: true });
+  if (img.data) {
+    /* a DataTexture at the wrong size: go through ImageData to rescale */
+    const tmp = document.createElement('canvas');
+    tmp.width = img.width; tmp.height = img.height;
+    tmp.getContext('2d').putImageData(
+      new ImageData(new Uint8ClampedArray(img.data), img.width, img.height), 0, 0);
+    ctx.drawImage(tmp, 0, 0, size, size);
+  } else {
+    ctx.drawImage(img, 0, 0, size, size);
+  }
+  return ctx.getImageData(0, 0, size, size).data;
+}
+
 function arrayTexture(getSet, which, size) {
   const layers = BIOME_SURFACES.length;
   const data = new Uint8Array(size * size * 4 * layers);
   for (let l = 0; l < layers; l++) {
-    const src = getSet(BIOME_SURFACES[l])[which].image.data;
+    const name = BIOME_SURFACES[l];
+    const src = pixelsAt(getSet(name)[which], size);
+    if (!src) {
+      /* a layer with no usable pixels leaves mid-grey rather than failing the
+         build: one missing map must not cost the whole terrain */
+      data.fill(128, l * size * size * 4, (l + 1) * size * size * 4);
+      continue;
+    }
     data.set(src, l * size * size * 4);
   }
   const t = new THREE.DataArrayTexture(data, size, size, layers);
