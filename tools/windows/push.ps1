@@ -102,6 +102,19 @@ function Save-Resized($srcPath, $destPath) {
   } finally { $img.Dispose() }
 }
 
+# ------------------------------------------------------------------- unzip
+# Download sites hand you a zip; expecting someone to unpack ten of them by
+# hand is how this step gets skipped. Unpack anything we find, in place.
+$zips = Get-ChildItem $drop -Recurse -File | Where-Object { $_.Extension -eq '.zip' }
+foreach ($z in $zips) {
+  $target = Join-Path $z.DirectoryName $z.BaseName
+  if (-not (Test-Path $target)) {
+    Write-Host "  unzipping $($z.Name)..."
+    try { Expand-Archive $z.FullName -DestinationPath $target -Force }
+    catch { Write-Host "  could not unzip $($z.Name): $($_.Exception.Message)" -ForegroundColor Yellow }
+  }
+}
+
 # ------------------------------------------------------------- the textures
 $textures = Get-ChildItem $drop -Recurse -File | Where-Object {
   $_.Extension -match '^\.(jpg|jpeg|png)$' -and
@@ -145,7 +158,7 @@ foreach ($m in $models) {
 if ($count -eq 0) {
   Write-Host ''
   Write-Host 'Nothing found in the drop folder.' -ForegroundColor Yellow
-  Write-Host "Put unzipped texture sets or .glb models in:"
+  Write-Host "Put texture zips, loose maps, or .glb models in:"
   Write-Host "  $drop"
   Write-Host ''
   Read-Host 'Press Enter to close'; exit 0
