@@ -71,9 +71,17 @@ console.log('');
 line('materials', r.materials.loaded, r.materials.expected);
 const matMissing = r.materials.expected.filter((m) => !r.materials.loaded.includes(m));
 if (matMissing.length) console.log(`${''.padEnd(12)} absent: ${matMissing.join(', ')}`);
+if (r.materials.failures && r.materials.failures.length) {
+  console.log(`${''.padEnd(12)} why:`);
+  r.materials.failures.forEach((f) => console.log(`${''.padEnd(14)}${f}`));
+}
 line('models', r.models.loaded, r.models.expected);
 if (r.models.missing.length) console.log(`${''.padEnd(12)} absent: ${r.models.missing.join(', ')}`);
 console.log(`\nattempted ${r.materials.attempted}  probe: ${r.probe}`);
+if (r.models.triangles) {
+  const top = Object.entries(r.models.triangles).sort((a, b) => b[1] - a[1]).slice(0, 4);
+  console.log('heaviest models: ' + top.map(([k, v]) => `${k} ${v.toLocaleString()}`).join(', '));
+}
 console.log(`draws ${r.stats.calls}  tris ${r.stats.tris}  textures ${r.stats.textures}`);
 if (errs.length) { console.log('\npage errors:'); errs.forEach((e) => console.log('  ' + e)); }
 

@@ -142,14 +142,20 @@ export async function loadScanned(opts) {
     const res = await fetch(basePath + 'index.json', { cache: 'no-cache' });
     if (res.ok) index = await res.json();
   } catch (e) { /* absent is the normal case */ }
-  if (!index || !Array.isArray(index.sets) || !index.sets.length) {
-    skipReason = 'no assets/materials/index.json';
-    return scannedReport();
+  /* The manifest is an optimisation, not a gate. Requiring it meant six
+     perfectly good texture sets sat on disk unused because nothing had
+     written the file: assets present and silently ignored is the worst of
+     both worlds. With no manifest, probe every directory directly and pay the
+     404s. A texture that is there should be used. */
+  let candidates = Object.entries(SCANNED);
+  if (index && Array.isArray(index.sets) && index.sets.length) {
+    const present = new Set(index.sets);
+    candidates = candidates.filter(([, dir]) => present.has(dir));
+  } else {
+    skipReason = 'no index.json - probing each set directly';
   }
-  const present = new Set(index.sets);
 
-  await Promise.all(Object.entries(SCANNED)
-    .filter(([, dir]) => present.has(dir))
+  await Promise.all(candidates
     .map(async ([surf, dir]) => {
     const at = (f) => `${basePath}${dir}/${f}`;
     const [color, normal, rough, ao] = await Promise.all([
