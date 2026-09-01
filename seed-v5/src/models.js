@@ -163,11 +163,15 @@ export function placeModel(name, x, y, z, rotY, scale) {
   if (rotY) g.rotation.y = rotY;
   if (scale && scale !== 1) g.scale.setScalar(scale);
   g.userData.model = name;
-  /* The optimisation passes bucket geometry by its construction parameters,
-     which a loaded glTF has none of — merging one throws on the undefined
-     signature and takes the whole build down. Loaded models are already one
-     mesh per material, so there is nothing to gain by merging them anyway. */
-  g.userData.noMerge = true;
+  /* Deliberately mergeable. This was flagged noMerge on a guess that the
+     merge pass was breaking the build; the real cause was arrayTexture
+     reading .image.data off a scanned texture. Leaving the flag on cost 3,300
+     draw calls — one per placed prop — because merging by material is exactly
+     what turns a thousand benches into a handful of batches.
+
+     collapseInstanced is the pass that cannot take these, since it buckets by
+     a geometry's construction parameters and a loaded glTF has none; that is
+     why instanceModel() below still opts out and this does not. */
   return g;
 }
 
@@ -196,7 +200,9 @@ export function instanceModel(name, transforms) {
     });
     inst.instanceMatrix.needsUpdate = true;
     inst.userData.model = name;
-    inst.userData.noMerge = true;   /* see placeModel */
+    /* InstancedMesh only: collapseInstanced buckets by the geometry's
+       construction parameters, which a loaded glTF does not have. */
+    inst.userData.noMerge = true;
     out.push(inst);
   }
   return out;
