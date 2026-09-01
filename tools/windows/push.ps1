@@ -170,7 +170,17 @@ foreach ($f in $textures) {
 # and everything else copies as its whole directory.
 $models = Get-ChildItem $scanDirs -Recurse -File -ErrorAction SilentlyContinue |
           Where-Object { $_.Extension -match '^\.(glb|gltf)$' }
+# GitHub rejects any single file over 100 MB, and the whole push fails - not
+# just that file. Stop them here, where the message can say which model and
+# why, rather than at the remote after a ten-minute upload.
+$GH_LIMIT = 95MB
+
 foreach ($m in $models) {
+  if ($m.Length -gt $GH_LIMIT) {
+    Write-Host ("  SKIP     {0,-42} {1,6:N1} MB  over GitHub's 100 MB limit" -f
+                $m.Name, ($m.Length / 1MB)) -ForegroundColor Yellow
+    continue
+  }
   Copy-Item $m.FullName (Join-Path $mdlDir $m.Name) -Force
   Write-Host ("  model    {0,-42} {1,6:N1} MB" -f $m.Name, ($m.Length / 1MB))
   if ($m.Length -gt 40MB) {
@@ -192,6 +202,12 @@ foreach ($m in $otherModels) {
   $keep = Get-ChildItem $srcDir -File | Where-Object {
     $_.Extension -match '^\.(obj|fbx|mtl|jpg|jpeg|png|tga|bmp)$'
   }
+  $tooBig = $keep | Where-Object { $_.Length -gt $GH_LIMIT }
+  foreach ($b in $tooBig) {
+    Write-Host ("  SKIP     {0,-42} {1,6:N1} MB  over GitHub's 100 MB limit" -f
+                $b.Name, ($b.Length / 1MB)) -ForegroundColor Yellow
+  }
+  $keep = $keep | Where-Object { $_.Length -le $GH_LIMIT }
   if (-not $keep) { continue }
 
   $destDir = Join-Path $mdlDir (Split-Path $srcDir -Leaf)
