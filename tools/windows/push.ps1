@@ -11,6 +11,20 @@
 #>
 
 $ErrorActionPreference = 'Stop'
+
+# Without this, any terminating error closes the window before it can be read,
+# which looks identical to the script doing nothing at all.
+trap {
+  Write-Host ''
+  Write-Host 'Something went wrong:' -ForegroundColor Red
+  Write-Host $_.Exception.Message -ForegroundColor Red
+  if ($_.InvocationInfo) { Write-Host ('  at line ' + $_.InvocationInfo.ScriptLineNumber) }
+  Write-Host ''
+  Write-Host 'Send this text to Claude.'
+  Read-Host 'Press Enter to close'
+  exit 1
+}
+
 Add-Type -AssemblyName System.Drawing
 
 $REPO   = 'https://github.com/TheHighestTimeline/OVV-The-SEED-Initiative.git'
@@ -141,7 +155,13 @@ if ($count -eq 0) {
 Write-Host ''
 Write-Host "Pushing $count files..." -ForegroundColor Cyan
 git -C $repo add -A 'seed-v5/public/assets'
-if (git -C $repo diff --cached --quiet 2>$null; $LASTEXITCODE -eq 0) {
+# --quiet exits 1 when the index differs from HEAD, 0 when it matches. Run it
+# as its own statement: a PowerShell condition takes an expression, and
+# `if (cmd; $LASTEXITCODE -eq 0)` is a parse error, which kills the whole
+# script before a single line executes.
+git -C $repo diff --cached --quiet 2>$null
+$nothingStaged = ($LASTEXITCODE -eq 0)
+if ($nothingStaged) {
   Write-Host 'Nothing changed since last time.' -ForegroundColor Yellow
 } else {
   git -C $repo commit -m "Add assets ($count files) via push.bat"
