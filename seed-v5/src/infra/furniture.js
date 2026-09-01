@@ -13,6 +13,7 @@ import { mesh, box, cyl } from '../geom.js';
 import { MAT } from '../03-materials.js';
 import { groundH } from '../01-terrain.js';
 import { BIN, BENCH, BIKE_RACK, BOLLARD, HYDRANT, IN, FT, DEG } from '../spec/index.js';
+import { placeModel, hasModel } from '../models.js';
 
 /* ------------------------------------------------------------ waste bins */
 /**
@@ -20,6 +21,12 @@ import { BIN, BENCH, BIKE_RACK, BOLLARD, HYDRANT, IN, FT, DEG } from '../spec/in
  * deployed — a lone litter bin means the recycling ends up in it.
  */
 export function binPair(x, z, facing) {
+  /* The downloaded set is a triple, which stands in for the pair: the point
+     of the pair is separated waste streams, and three streams is more of
+     that, not less. */
+  const m = placeModel('bin', x, groundH(x, z), z, -facing);
+  if (m) { m.name = 'bin-pair'; return m; }
+
   const g = new THREE.Group();
   g.name = 'bin-pair';
   const y0 = groundH(x, z);
@@ -73,6 +80,13 @@ export function binPair(x, z, facing) {
 
 /* ---------------------------------------------------------------- bench */
 export function bench(x, z, facing, opts = {}) {
+  /* A downloaded bench, where one exists, at the seat height the spec sets.
+     Swapping here rather than at the call sites means every bench in the
+     world — plaza, promenade, transit stop — changes together, and the
+     procedural build below stays as the fallback rather than dead code. */
+  const m = placeModel('bench', x, groundH(x, z), z, -facing);
+  if (m) { m.name = 'bench'; return m; }
+
   const g = new THREE.Group();
   g.name = 'bench';
   const y0 = groundH(x, z);
@@ -125,6 +139,18 @@ export function bench(x, z, facing, opts = {}) {
 /* ------------------------------------------------------------ bike rack */
 /** A row of inverted-U racks at the APBP spacing. */
 export function bikeRackRow(x, z, facing, count = 3) {
+  if (hasModel('bikeRack')) {
+    const row = new THREE.Group();
+    row.name = 'bike-rack-row';
+    const perp = facing + Math.PI / 2;
+    for (let i = 0; i < count; i++) {
+      const o = (i - (count - 1) / 2) * (BIKE_RACK.width + BIKE_RACK.rackSpacing);
+      const rx = x + Math.cos(perp) * o, rz = z + Math.sin(perp) * o;
+      const r = placeModel('bikeRack', rx, groundH(rx, rz), rz, -facing);
+      if (r) row.add(r);
+    }
+    if (row.children.length) return row;
+  }
   const g = new THREE.Group();
   g.name = 'bike-rack';
   const y0 = groundH(x, z);
@@ -203,6 +229,9 @@ export function bollardRun(ax, az, bx, bz, opts = {}) {
  * real placement rule — a hydrant turned the wrong way costs a crew time.
  */
 export function hydrant(x, z, facingStreet, flow = 'med') {
+  const m = placeModel('hydrant', x, groundH(x, z), z, -facingStreet);
+  if (m) { m.name = 'hydrant'; return m; }
+
   const g = new THREE.Group();
   g.name = 'hydrant';
   const y0 = groundH(x, z);
