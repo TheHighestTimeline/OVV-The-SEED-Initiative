@@ -7,6 +7,7 @@
    ========================================================================== */
 
 import * as THREE from 'three';
+import { hasModel, instanceModel, CATALOG } from './models.js';
 import { SITE, LAYER, DEG, clamp, lerp, smoothstep, stream } from './00-config.js';
 import { groundH, siteH, perimU, slopeAt, waterY, PONDS } from './01-terrain.js';
 import { MAT } from './03-materials.js';
@@ -18,6 +19,8 @@ const r = stream('vegetation');
 export const WIND = { value: 0 };
 
 /* the stated native list (c4), plus the coastal species */
+const MODEL_TREE_H = CATALOG.tree.size;
+
 export const SPECIES = {
   loblolly:  { bark: 'barkPine',  fol: 'folPine',     h: [17, 30], trunk: 0.30, canopy: 4.6, form: 'conifer' },
   redcedar:  { bark: 'barkCedar', fol: 'folCedar',    h: [7, 13],  trunk: 0.20, canopy: 2.8, form: 'conifer' },
@@ -314,6 +317,26 @@ export function buildVegetation(world) {
     for (let lod = 0; lod < 3; lod++) {
       const sub = list.filter((t) => t.lod === lod);
       if (!sub.length) continue;
+
+      /* The nearest trees get the real mesh where one was downloaded. The
+         crossed-billboard form below is the right call for the thousands
+         further out — a mesh per tree would cost a draw call per tree — but at
+         eye level it is the single most obviously fake thing in the world.
+         t.s is the tree's height in metres, and the model was normalised to
+         CATALOG.tree.size, so the ratio is the instance scale. */
+      if (lod === 0 && hasModel('tree') && sp.form !== 'conifer') {
+        const tr0 = sub.map((t) => ({
+          x: t.x, y: t.y, z: t.z, rotY: t.ry, scale: t.s / MODEL_TREE_H,
+        }));
+        const meshes = instanceModel('tree', tr0);
+        for (const m of meshes) {
+          m.name = `veg-model-${key}`;
+          m.userData.seedId = 'vegetation';
+          g.add(m);
+        }
+        if (meshes.length) { count += sub.length; continue; }
+      }
+
       const geo = treeGeometry(sp, lod);
       const tr = sub.map((t) => ({ x: t.x, y: t.y, z: t.z, ry: t.ry, rz: t.rz,
                                    sx: t.s, sy: t.s, sz: t.s }));

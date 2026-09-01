@@ -5,6 +5,7 @@
    usage: node tools/look.js [--tag=before] [--night] */
 import { chromium } from 'playwright-core';
 import fs from 'node:fs';
+import http from 'node:http';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -35,6 +36,27 @@ const FRAMES = [
   { n: 'street-night',    time: 'night',     walk: [0, -40, Math.PI * 0.5] },
 ];
 
+/* Serve dist over http rather than loading it as file://. Textures reach the
+   page through a canvas to pack the ORM map, and a canvas that has drawn a
+   file:// image is tainted - getImageData throws SecurityError and every
+   scanned material silently falls back to the generated one. Serving is also
+   what Netlify does, so this exercises the real path. */
+const server = http.createServer((req, res) => {
+  const rel = decodeURIComponent(req.url.split('?')[0]).replace(/^\/+/, '') || 'index.html';
+  const abs = path.join(root, 'dist', rel);
+  if (!abs.startsWith(path.join(root, 'dist'))) { res.writeHead(403).end(); return; }
+  fs.readFile(abs, (err, buf) => {
+    if (err) { res.writeHead(404).end(); return; }
+    const type = { '.html': 'text/html', '.js': 'text/javascript', '.jpg': 'image/jpeg',
+                   '.png': 'image/png', '.glb': 'model/gltf-binary', '.gltf': 'model/gltf+json',
+                   '.css': 'text/css' }[path.extname(abs).toLowerCase()] || 'application/octet-stream';
+    res.writeHead(200, { 'Content-Type': type }).end(buf);
+  });
+});
+await new Promise((r) => server.listen(0, '127.0.0.1', r));
+const origin = `http://127.0.0.1:${server.address().port}`;
+console.log('serving dist at', origin);
+
 const browser = await chromium.launch({
   executablePath: candidates.filter(Boolean).find((p) => fs.existsSync(p)),
   headless: true,
@@ -43,7 +65,7 @@ const browser = await chromium.launch({
 });
 const page = await browser.newPage({ viewport: { width: 1600, height: 900 } });
 page.on('pageerror', (e) => console.log('[pageerror]', e.message));
-await page.goto('file://' + file.replace(/\\/g, '/'));
+await page.goto(`${origin}/${path.basename(file)}`);
 await page.waitForFunction(() => window.__seedReady === true, { timeout: 240000 });
 console.log('ready');
 
@@ -64,3 +86,4 @@ for (const f of FRAMES) {
   console.log('shot', path.basename(out));
 }
 await browser.close();
+server.close();

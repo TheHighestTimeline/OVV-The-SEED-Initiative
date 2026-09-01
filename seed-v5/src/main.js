@@ -11,6 +11,7 @@ import { buildTerrain, groundH, siteH } from './01-terrain.js';
 import { registry, setRoot } from './02-registry.js';
 import { buildMaterialLibrary, buildTerrainMaterial, freezeMaterials, MAT, materialList } from './03-materials.js';
 import { loadScanned, scannedReport } from './scanned.js';
+import { loadModels, modelReport } from './models.js';
 import { RenderPipeline, detectTier } from './04-render.js';
 import { buildRoadNetwork, buildWalkNetwork, wireDestinations, PLOTS } from './08-siteplan.js';
 import { slopeAudit } from './06-walks.js';
@@ -197,6 +198,15 @@ async function main() {
   } else {
     console.info('[materials] all surfaces generated' +
                  (scan.skipReason ? ` (${scan.skipReason})` : ''));
+  }
+
+  const mdl = await loadModels();
+  if (mdl.loaded.length) {
+    console.info(`[models] ${mdl.loaded.length}/${mdl.expected.length} loaded:`,
+                 mdl.loaded.join(', '));
+    if (mdl.missing.length) console.info('[models] absent:', mdl.missing.join(', '));
+  } else {
+    console.info('[models] none found — every prop stays procedural');
   }
 
   await progress('generating materials');
@@ -501,6 +511,8 @@ async function main() {
     if (!fpAudit.length && !geoAudit.length) console.info('[audit] clean in ' + state.report.auditMs + ' ms');
   }, 60);
 
+  window.__seedMaterials = () => scannedReport();
+  window.__seedModels = () => modelReport();
   window.__seedReady = true;
 
   if (DEBUG) startDebug(state);

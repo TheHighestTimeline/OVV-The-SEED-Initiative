@@ -44,7 +44,7 @@ export const SCANNED = {
   concreteCurb:  'concrete-curb',
   paver:         'paving-stones',
   gravel:        'gravel',
-  panelWall:     'metal-panel',
+  panelWall:     'metal020',      /* ambientCG Metal020, brought in as-named */
   roofSeam:      'roof-seam',
   deckTimber:    'timber-deck',
 };

@@ -12,3 +12,6 @@ shots/
 .DS_Store
 Thumbs.db
 ~$*
+
+# render output from tools/look.js and tools/shoot.js
+seed-v5/shots/
