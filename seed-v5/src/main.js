@@ -540,7 +540,17 @@ async function main() {
     pipe.scene.traverse((o) => {
       if (!o.name || !o.name.toLowerCase().includes(needle.toLowerCase())) return;
       o.getWorldPosition(v);
-      hits.push({ name: o.name, x: +v.x.toFixed(1), y: +v.y.toFixed(1), z: +v.z.toFixed(1) });
+      /* Size matters as much as position: a prop at the right coordinate and
+         four times its real size is a worse bug than a missing one, and both
+         look like "the model did not work" from a screenshot. */
+      const b = new THREE.Box3().setFromObject(o);
+      const d = new THREE.Vector3();
+      b.getSize(d);
+      hits.push({
+        name: o.name,
+        x: +v.x.toFixed(1), y: +v.y.toFixed(1), z: +v.z.toFixed(1),
+        size: `${d.x.toFixed(2)} x ${d.y.toFixed(2)} x ${d.z.toFixed(2)}`,
+      });
     });
     return hits.slice(0, limit || 10);
   };

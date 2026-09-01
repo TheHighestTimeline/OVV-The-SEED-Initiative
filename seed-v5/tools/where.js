@@ -35,7 +35,8 @@ for (let i = 0; i < 300; i++) {
 for (const needle of (process.argv.slice(2).length ? process.argv.slice(2) : ['bench', 'bin', 'hydrant'])) {
   const hits = await page.evaluate((n) => window.__seedFind(n, 6), needle);
   console.log(`\n${needle}: ${hits.length ? '' : 'none found'}`);
-  hits.forEach((h) => console.log(`  ${h.name.padEnd(22)} ${h.x}, ${h.y}, ${h.z}`));
+  hits.forEach((h) => console.log(
+    `  ${h.name.padEnd(16)} at ${String(h.x).padStart(8)},${String(h.z).padStart(8)}   size ${h.size}`));
 }
 await browser.close();
 server.close();
