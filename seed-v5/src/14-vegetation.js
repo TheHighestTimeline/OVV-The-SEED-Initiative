@@ -325,7 +325,15 @@ export function buildVegetation(world) {
   let count = 0;
   /* Spent across every species, decremented as trees are allocated. The
      species loop must not each get the whole budget. */
-  let modelTreeBudget = MODEL_TREE_BUDGET;
+  /* Shared out per species rather than first-come. Spent in loop order, the
+     first species takes the lot and every real tree in the world is a poplar
+     while six other species stay billboards — correct on triangles, wrong on
+     the ground. An even share buys fewer real trees each and a mixed canopy,
+     which is what the planting list actually describes. */
+  const modelSpecies = Object.keys(SPECIES)
+    .filter((k) => SPECIES[k].form !== 'conifer' && (accepted[k] || []).some((t) => t.lod === 0));
+  const perSpeciesBudget = modelSpecies.length
+    ? MODEL_TREE_BUDGET / modelSpecies.length : MODEL_TREE_BUDGET;
   for (const key of Object.keys(SPECIES)) {
     const list = accepted[key];
     if (!list || !list.length) continue;
@@ -347,9 +355,8 @@ export function buildVegetation(world) {
            to 354 million and no browser survives that. Spend a fixed budget on
            the closest trees and let the rest keep the billboard form, which is
            what the LOD system is for. */
-        const cap = Math.min(sub.length, instanceBudget('tree', modelTreeBudget));
+        const cap = Math.min(sub.length, instanceBudget('tree', perSpeciesBudget));
         if (cap > 0) {
-          modelTreeBudget -= cap * (modelTriangles('tree') || 0);
           const tr0 = sub.slice(0, cap).map((t) => ({
             x: t.x, y: t.y, z: t.z, rotY: t.ry, scale: t.s / MODEL_TREE_H,
           }));
