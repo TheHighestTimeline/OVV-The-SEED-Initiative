@@ -725,8 +725,8 @@ function greenhouse(p, i) {
       new THREE.PlaneGeometry(0.78, 0.60).rotateY(-Math.PI / 3),
     ]);
     leaf.translate(0, 0.24, 0);
-    grp.add(instanced(leaf, MAT.cropLeaf || MAT.crop, crops,
-      { cast: false, receive: true }));
+    if (!MAT.cropLeaf) throw new Error('[campus] MAT.cropLeaf missing — crops would fall back to flat green');
+    grp.add(instanced(leaf, MAT.cropLeaf, crops, { cast: false, receive: true }));
     /* LED grow bars */
     grp.add(mesh(box(p.w - 7, 0.09, 0.14), MAT.emitCool, p.x, by + 3.3, rz));
   }

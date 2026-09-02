@@ -1005,6 +1005,12 @@ export function buildMaterialLibrary(renderer, quality) {
   MAT.folPoplar   = fol('folPoplar', 'folPoplar');
   MAT.folBirch    = fol('folBirch', 'folBirch');
   MAT.folPalmetto = fol('folPalmetto', 'folPalmetto');
+  /* reg() above registers a SURFACE; fol() builds the MATERIAL from it. The
+     first attempt at this registered the surface and stopped there, so
+     MATS.get('folCrop') was undefined, the caller's `|| MAT.crop` fallback
+     silently restored the flat green, and the greenhouses still rendered
+     squares while the commit said they were fixed. */
+  MAT.cropLeaf    = fol('folCrop', 'folCrop');
 
   /* --- flat utility colours, used only where a texture would be invisible */
   const flat = (n, c, r, m2) => mat(n, () => new THREE.MeshStandardMaterial({
@@ -1030,7 +1036,6 @@ export function buildMaterialLibrary(renderer, quality) {
   MAT.signBrown = MATS.get('signBrown'); MAT.signBlue = MATS.get('signBlue');
   MAT.bronze = MATS.get('bronze'); MAT.copper = MATS.get('copper');
   MAT.planting = MATS.get('planting'); MAT.crop = MATS.get('crop');
-  MAT.cropLeaf = MATS.get('folCrop');
   MAT.marsh = MATS.get('marsh'); MAT.foam = MATS.get('foam');
   MAT.tyre = MATS.get('tyre');
 
