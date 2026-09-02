@@ -31,6 +31,10 @@ const candidates = [
    The coordinates below are real bench and bin positions in the community
    plaza, not positions that seemed likely. */
 const FRAMES = [
+  /* Inside a greenhouse and inside the aquaponics hall — the two rooms whose
+     defects were found by eye and never by a gate. */
+  { n: 'greenhouse',   time: 'afternoon', goto: [227, -214, 26, -1.2, 1.36] },
+  { n: 'aquaponics',   time: 'afternoon', goto: [228, -100, 30, -1.9, 1.34] },
   { n: 'plaza-bench',  time: 'afternoon', goto: [15.4, 335.4, 14, -2.35, 1.34] },
   { n: 'plaza-bin',    time: 'afternoon', goto: [-20.5, 278.6, 16, -0.9, 1.32] },
   { n: 'plaza-walk',   time: 'afternoon', walk: [24, 340, Math.PI * 1.22] },
