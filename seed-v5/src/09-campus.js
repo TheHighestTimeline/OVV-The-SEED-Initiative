@@ -8,7 +8,7 @@ import { groundH, PONDS } from './01-terrain.js';
 import { MAT } from './03-materials.js';
 import { place, reserve } from './02-registry.js';
 import { buildBuilding, industrialVolume, FACE } from './07-buildings.js';
-import { mesh, box, cyl, decal, instanced, grounded } from './geom.js';
+import { mesh, box, cyl, decal, instanced, grounded, mergeGeometries } from './geom.js';
 import { PLOTS } from './08-siteplan.js';
 import { makeWaterMaterial, pondSurface } from './water.js';
 
@@ -495,8 +495,17 @@ export function buildCampus(world, roads, walks) {
           b.group.add(mesh(cyl(5.0, 5.0, 0.1, 24), MAT.glassSimple, tx, by + 3.1, p.z - 12));
         }
         for (let i = 0; i < 3; i++) {
-          b.group.add(mesh(box(60, 0.7, 3.0), MAT.alu, p.x, by + 1.1, p.z + 4 + i * 6));
-          b.group.add(mesh(box(58, 0.35, 2.6), MAT.crop, p.x, by + 1.6, p.z + 4 + i * 6));
+          const rz = p.z + 4 + i * 6;
+          b.group.add(mesh(box(60, 0.7, 3.0), MAT.alu, p.x, by + 1.1, rz));
+          b.group.add(mesh(box(58, 0.35, 2.6), MAT.crop, p.x, by + 1.6, rz));
+          /* Legs. These 60 m raft beds had none and hung in the air with
+             nothing under them — the greenhouse benches beside them have had
+             ten posts each all along. A tank of water does not float. */
+          for (let q = 0; q < 11; q++) {
+            const lx = p.x - 28 + q * 5.6;
+            b.group.add(mesh(box(0.16, 0.75, 0.16), MAT.steelDark, lx, by + 0.38, rz - 1.2));
+            b.group.add(mesh(box(0.16, 0.75, 0.16), MAT.steelDark, lx, by + 0.38, rz + 1.2));
+          }
         }
         /* the 5,000 gallon reef tank, fully inside the envelope, with a real
            glazed viewing wall on the entry side */
@@ -707,8 +716,17 @@ function greenhouse(p, i) {
                    y: by + 1.16, z: rz + (Math.random() - 0.5) * 1.2,
                    ry: Math.random() * 6.28, s: 0.7 + Math.random() * 0.5 });
     }
-    grp.add(instanced(new THREE.PlaneGeometry(0.8, 0.55), MAT.crop, crops,
-      { cast: false, receive: false }));
+    /* Crossed cards, not one plane. A single quad has no volume from any
+       angle but dead-on, which is what made these read as green squares —
+       the trees have used crossed cards all along. */
+    const leaf = mergeGeometries([
+      new THREE.PlaneGeometry(0.78, 0.60),
+      new THREE.PlaneGeometry(0.78, 0.60).rotateY(Math.PI / 3),
+      new THREE.PlaneGeometry(0.78, 0.60).rotateY(-Math.PI / 3),
+    ]);
+    leaf.translate(0, 0.24, 0);
+    grp.add(instanced(leaf, MAT.cropLeaf || MAT.crop, crops,
+      { cast: false, receive: true }));
     /* LED grow bars */
     grp.add(mesh(box(p.w - 7, 0.09, 0.14), MAT.emitCool, p.x, by + 3.3, rz));
   }

@@ -618,6 +618,11 @@ reg('folOak',     foliageDef([0.072, 0.135, 0.055], [0.205, 0.310, 0.112], 'broa
 reg('folPoplar',  foliageDef([0.088, 0.158, 0.062], [0.255, 0.352, 0.135], 'broad'));
 reg('folBirch',   foliageDef([0.098, 0.168, 0.070], [0.288, 0.375, 0.152], 'broad'));
 reg('folPalmetto',foliageDef([0.070, 0.128, 0.058], [0.185, 0.288, 0.108], 'needle'));
+/* Crops were a flat green with no texture and no alpha, drawn on a single
+   unrotated plane — so every plant in every greenhouse rendered as a literal
+   green rectangle. They are leaves like any other; give them the same
+   alpha-tested card the canopy uses. */
+reg('folCrop',    foliageDef([0.086, 0.150, 0.052], [0.242, 0.348, 0.120], 'broad'));
 
 /* ---- architectural glass with a bird-safe frit pattern (stated feature c5) */
 reg('fritGlass', {
@@ -1025,6 +1030,7 @@ export function buildMaterialLibrary(renderer, quality) {
   MAT.signBrown = MATS.get('signBrown'); MAT.signBlue = MATS.get('signBlue');
   MAT.bronze = MATS.get('bronze'); MAT.copper = MATS.get('copper');
   MAT.planting = MATS.get('planting'); MAT.crop = MATS.get('crop');
+  MAT.cropLeaf = MATS.get('folCrop');
   MAT.marsh = MATS.get('marsh'); MAT.foam = MATS.get('foam');
   MAT.tyre = MATS.get('tyre');
 
