@@ -31,6 +31,14 @@ const candidates = [
    The coordinates below are real bench and bin positions in the community
    plaza, not positions that seemed likely. */
 const FRAMES = [
+  /* The gauntlet set: the places a critic has to judge, at the distances a
+     visitor actually sees them from. */
+  { n: 'g-plaza',      time: 'afternoon', goto: [15.4, 335.4, 40, -2.35, 1.20] },
+  { n: 'g-street',     time: 'afternoon', walk: [24, 340, Math.PI * 1.22] },
+  { n: 'g-greenhouse', time: 'afternoon', goto: [227, -214, 26, -1.2, 1.36] },
+  { n: 'g-campus',     time: 'afternoon', goto: [-120, -60, 210, -0.85, 1.30] },
+  { n: 'g-coast',      time: 'afternoon', goto: [110, 1270, 260, 2.90, 1.24] },
+  { n: 'g-night',      time: 'night',     goto: [15.4, 335.4, 60, -2.35, 1.22] },
   /* Inside a greenhouse and inside the aquaponics hall — the two rooms whose
      defects were found by eye and never by a gate. */
   { n: 'greenhouse',   time: 'afternoon', goto: [227, -214, 26, -1.2, 1.36] },
